@@ -2,17 +2,17 @@ frontend/
 ├── src/
 │   ├── components/
 │   │   ├── Game/
-│   │   │   ├── Board.jsx
-│   │   │   ├── Piece.jsx
-│   │   │   ├── NextPiece.jsx
-│   │   │   └── GameInfo.jsx
+│   │   │   ├── Board.tsx
+│   │   │   ├── Piece.tsx
+│   │   │   ├── NextPiece.tsx
+│   │   │   └── GameInfo.tsx
 │   │   ├── Lobby/
-│   │   │   ├── RoomList.jsx
-│   │   │   ├── PlayerList.jsx
-│   │   │   └── CreateRoom.jsx
+│   │   │   ├── RoomList.tsx
+│   │   │   ├── PlayerList.tsx
+│   │   │   └── CreateRoom.tsx
 │   │   └── UI/
-│   │       ├── Header.jsx
-│   │       └── Leaderboard.jsx
+│   │       ├── Header.tsx
+│   │       └── Leaderboard.tsx
 │   ├── store/
 │   │   ├── index.js (store Redux)
 │   │   ├── slices/
@@ -26,8 +26,8 @@ frontend/
 │   ├── utils/
 │   │   ├── tetrominos.js
 │   │   └── gameLogic.js
-│   ├── App.jsx
-│   └── main.jsx
+│   ├── App.tsx
+│   └── main.tsx
 ├── .env
 └── package.json
 
