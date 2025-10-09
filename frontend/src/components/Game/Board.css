@@ -1,3 +1,4 @@
+/* Board.css */
 .board {
   display: inline-block;
   border: 2px solid #333;
@@ -12,4 +13,8 @@
   height: 30px;
   border: 1px solid #444;
   background-color: #000;
+}
+
+.cell.filled {
+  border: 2px solid #e4d9d9;
 }
