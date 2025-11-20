@@ -1,100 +1,168 @@
 // Board.tsx
-import { useLocation } from 'react-router-dom';
-import { Link } from 'react-router-dom';
-import { PIECES } from './Piece';
-import { useState } from 'react';
+import React, { useRef } from 'react';
+import { useLocation, Link } from 'react-router-dom';
+import { useTetris } from './useTetris';
+import { COLORS } from './constants';
 import './Board.css';
-// import { useEffect } from 'react';
-
-// function Board() {
-//   const currentPiece = PIECES.I;
-//   const location = useLocation();
-//   const name = location.state.playerName || 'Player1';
-
-//   const ROWS = 20;
-//   const COLS = 10;
-//   const emptyBoard = Array(ROWS)
-//     .fill(null)
-//     .map(() => Array(COLS).fill(0));
-
-//   return (
-//     <div>
-//       <Link to="/">
-//         <button className="game-button">Back</button>
-//         </Link>
-//       <h1>{name}</h1>
-//       <div className="board">
-//         {emptyBoard.map((row, rowIndex) => (
-//           <div key={rowIndex} className="row">
-//             {row.map((cell, colIndex) => (
-//               <div key={colIndex} className="cell" />
-//             ))}
-//           </div>
-//         ))}
-//       </div>
-//     </div>
-
-//   );
-// }
 
 function Board() {
-  const currentPiece = PIECES.I;
   const location = useLocation();
-  const name = location.state.playerName || 'Player1';
-  
-  const ROWS = 20;
-  const COLS = 10;
-  
-  // Position de la pièce
-  const [pieceX, setPieceX] = useState(3);
-  const [pieceY, setPieceY] = useState(0);
-  
-  const emptyBoard = Array(ROWS)
-    .fill(null)
-    .map(() => Array(COLS).fill(0));
-  
-  const board = emptyBoard.map((row, y) => 
+  const name = location.state?.playerName || 'Player1';
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const {
+    player,
+    board,
+    gameOver,
+    movePlayer,
+    drop,
+    hardDrop,
+    playerRotate,
+    setDropTime,
+    startGame,
+  } = useTetris();
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (gameOver) return;
+
+    const { key } = e; // Beaucoup plus propre que keyCode
+    e.preventDefault();
+
+    switch (key) {
+      case "ArrowLeft":
+        movePlayer(-1);
+        break;
+
+      case "ArrowRight":
+        movePlayer(1);
+        break;
+
+      case "ArrowUp":
+        playerRotate(board, 1);
+        break;
+
+      case "ArrowDown":
+        setDropTime(50);
+        drop();
+        break;
+
+      case " ":
+        hardDrop();
+        break;
+    }
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    if (gameOver) return;
+
+    if (e.key === "ArrowDown") {
+      setDropTime(1000);
+    }
+  };
+
+
+  // const move = ({ keyCode }: { keyCode: number }) => {
+  //   if (gameOver) return;
+  //   if (keyCode === 37)
+  //     movePlayer(-1); // Gauche
+  //   else if (keyCode === 39)
+  //     movePlayer(1); // Droite
+  //   else if (keyCode === 38)
+  //     playerRotate(board, 1); // Rotation
+  //   else if (keyCode === 32) hardDrop(); // Espace
+  // };
+
+  // const keyDown = ({ keyCode }: { keyCode: number }) => {
+  //   if (gameOver) return;
+  //   if (keyCode === 40) {
+  //     // Bas
+  //     setDropTime(50); // Accélère la descente
+  //     drop();
+  //   }
+  // };
+
+  // const keyUp = ({ keyCode }: { keyCode: number }) => {
+  //   if (gameOver) return;
+  //   if (keyCode === 40) setDropTime(1000); // Remet le timer normal
+  // };
+
+  // 1. Calcule l'état du tableau (un tableau 2D de couleurs)
+  const boardState = board.map((row, y) =>
     row.map((cell, x) => {
-      const localY = y - pieceY;
-      const localX = x - pieceX;
-      
-      if (
-        localY >= 0 && 
-        localY < currentPiece.shape.length &&
-        localX >= 0 && 
-        localX < currentPiece.shape[0].length &&
-        currentPiece.shape[localY][localX] === 1
-      ) {
-        return currentPiece.color;
-      }
-      return cell;
+      const isPlayerCell =
+        y >= player.pos.y &&
+        y < player.pos.y + player.tetromino.length &&
+        x >= player.pos.x &&
+        x < player.pos.x + player.tetromino[0].length &&
+        player.tetromino[y - player.pos.y][x - player.pos.x] !== 0;
+      return isPlayerCell ? player.color : cell;
     })
   );
 
   return (
-    <div>
+    <div
+      className="game-wrapper"
+      role="button"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
+      ref={wrapperRef}
+      onMouseEnter={() => wrapperRef.current?.focus()}
+      style={{ outline: "none" }}
+      // className="game-wrapper"
+      // role="button"
+      // tabIndex={0}
+      // onKeyDown={(e) => {
+      // e.stopPropagation();
+      // e.preventDefault();
+      // keyDown({ keyCode: 40 });
+      // }}
+      // // onKeyDown={keyDown}
+      // onKeyUp={keyUp}
+      // ref={wrapperRef}
+      // // Auto-focus pour que le clavier marche direct
+      // onMouseEnter={() => wrapperRef.current?.focus()}
+      // style={{ outline: 'none' }}
+    >
       <Link to="/">
-        <button className="game-button">Back</button>
+        <button className="game-button">Retour</button>
       </Link>
-      <h1>{name}</h1>
+
+      <div className="header">
+        <h1>{name}</h1>
+        {gameOver && <h2 style={{ color: 'red' }}>GAME OVER</h2>}
+        <button onClick={startGame} className="game-button">
+          {gameOver ? 'Recommencer' : 'Start Game'}
+        </button>
+      </div>
+
       <div className="board">
-        {board.map((row, rowIndex) => (
+        {boardState.map((row, rowIndex) => (
           <div key={rowIndex} className="row">
-            {row.map((cell, colIndex) => (
-              <div 
-                key={colIndex} 
+            {row.map((cellColor, colIndex) => (
+              <div
+                key={colIndex}
                 className="cell"
-                style={{ 
-                  backgroundColor: cell || '#000' 
+                style={{
+                  backgroundColor: cellColor || COLORS.EMPTY,
+                  border: cellColor
+                    ? '1px solid rgba(0,0,0,0.1)'
+                    : '1px solid #333',
                 }}
               />
             ))}
           </div>
         ))}
       </div>
+
+      <div className="controls-info">
+        <p>← → : Bouger</p>
+        <p>↑ : Rotation</p>
+        <p>↓ : Descendre vite</p>
+        <p>Espace : Chute instantanée</p>
+      </div>
     </div>
   );
 }
 
 export default Board;
-
