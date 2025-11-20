@@ -8,10 +8,7 @@ type Piece = {
 export const PIECES: { [key: string]: Piece } = {
   I: {
     shape: [
-      [0, 0, 0, 0],
-      [1, 1, 1, 1],
-      [0, 0, 0, 0],
-      [0, 0, 0, 0]
+      [1, 1, 1, 1]
     ],
     color: '#A020F0'
   },
@@ -25,8 +22,7 @@ export const PIECES: { [key: string]: Piece } = {
   T: {
     shape: [
       [0, 1, 0],
-      [1, 1, 1],
-      [0, 0, 0]
+      [1, 1, 1]
     ],
     color: '#800080'
   }
