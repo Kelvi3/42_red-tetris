@@ -25,7 +25,7 @@ function Board() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (gameOver) return;
 
-    const { key } = e; // Beaucoup plus propre que keyCode
+    const { key } = e;
     e.preventDefault();
 
     switch (key) {
@@ -60,32 +60,6 @@ function Board() {
     }
   };
 
-
-  // const move = ({ keyCode }: { keyCode: number }) => {
-  //   if (gameOver) return;
-  //   if (keyCode === 37)
-  //     movePlayer(-1); // Gauche
-  //   else if (keyCode === 39)
-  //     movePlayer(1); // Droite
-  //   else if (keyCode === 38)
-  //     playerRotate(board, 1); // Rotation
-  //   else if (keyCode === 32) hardDrop(); // Espace
-  // };
-
-  // const keyDown = ({ keyCode }: { keyCode: number }) => {
-  //   if (gameOver) return;
-  //   if (keyCode === 40) {
-  //     // Bas
-  //     setDropTime(50); // Accélère la descente
-  //     drop();
-  //   }
-  // };
-
-  // const keyUp = ({ keyCode }: { keyCode: number }) => {
-  //   if (gameOver) return;
-  //   if (keyCode === 40) setDropTime(1000); // Remet le timer normal
-  // };
-
   // 1. Calcule l'état du tableau (un tableau 2D de couleurs)
   const boardState = board.map((row, y) =>
     row.map((cell, x) => {
@@ -109,20 +83,6 @@ function Board() {
       ref={wrapperRef}
       onMouseEnter={() => wrapperRef.current?.focus()}
       style={{ outline: "none" }}
-      // className="game-wrapper"
-      // role="button"
-      // tabIndex={0}
-      // onKeyDown={(e) => {
-      // e.stopPropagation();
-      // e.preventDefault();
-      // keyDown({ keyCode: 40 });
-      // }}
-      // // onKeyDown={keyDown}
-      // onKeyUp={keyUp}
-      // ref={wrapperRef}
-      // // Auto-focus pour que le clavier marche direct
-      // onMouseEnter={() => wrapperRef.current?.focus()}
-      // style={{ outline: 'none' }}
     >
       <Link to="/">
         <button className="game-button">Retour</button>

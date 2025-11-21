@@ -52,17 +52,29 @@ export const useTetris = () => {
   // ----------------------
   //   RESET / SPAWN
   // ----------------------
-  const resetPlayer = useCallback(() => {
+// ----------------------
+  //   RESET / SPAWN
+  // ----------------------
+  const resetPlayer = useCallback((boardToCheck: any[][]) => {
     const newTet = randomTetromino();
-    // let len = newTet.shape.length;
+    
+    // On vérifie sur le plateau qu'on vient de calculer (le plus récent)
+    // et non sur l'état 'board' qui peut être en retard.
+    const isFirstRowOccupied = boardToCheck[0].some(
+      (cell: any) => cell !== 0 && cell !== null
+    );
 
-    // if (player.collided == false) return;
-    setPlayer({
-      pos: { x: 3, y: 0 },
-      tetromino: newTet.shape,
-      color: newTet.color,
-      collided: false,
-    });
+    if (isFirstRowOccupied) {
+      setGameOver(true);
+      setDropTime(null);
+    } else {
+      setPlayer({
+        pos: { x: 3, y: 0 },
+        tetromino: newTet.shape,
+        color: newTet.color,
+        collided: false,
+      });
+    }
   }, []);
 
   // ----------------------
@@ -119,67 +131,50 @@ export const useTetris = () => {
         }
       });
     });
-
+    
     return newBoard;
   };
-
+  
+  const lockAndReset = useCallback((playerToLock: IPlayer, currentBoard: any[][]) => {
+    const newBoard = lockPlayerToBoard(playerToLock, currentBoard);
+    const cleanedBoard = sweepRows(newBoard);
+    
+    setBoard(cleanedBoard);
+    resetPlayer(cleanedBoard);
+    setDropTime(1000);
+  }, [lockPlayerToBoard, resetPlayer, setBoard, setDropTime]);
   // ----------------------
   //   DROP
   // ----------------------
   const drop = useCallback(() => {
-    // console.log('FORME', player);
     if (!checkCollision(player, board, { x: 0, y: 1 })) {
-      console.log('zebi');
       setPlayer((prev) => ({
         ...prev,
         pos: { x: prev.pos.x, y: prev.pos.y + 1 },
         collided: false,
       }));
     } else {
-      console.log('LFL', player.collided, player);
-      // setPlayer((wtf) => ({ ...wtf, collided: true }));
-      const newBoard = lockPlayerToBoard(player, board);
-      console.log(newBoard);
-      const cleanedBoard = sweepRows(newBoard);
-      console.log('Clean', cleanedBoard);
+      if (player.pos.y < 1) {
+        setGameOver(true);
+        setDropTime(null);
+        return;
+      }
+      // Utilisation de la fonction modulaire
+      lockAndReset(player, board);
+    }
+  }, [player, board, checkCollision, lockAndReset, setGameOver, setDropTime]);
 
-      setBoard(cleanedBoard);
-      resetPlayer();
-      setDropTime(1000);
-    }
-    if (board[0].some((cell) => cell !== 0 && cell !== null)) {
-      setGameOver(true);
-      setDropTime(null);
-      return;
-    }
-  }, [
-    player,
-    board,
-    checkCollision,
-    resetPlayer,
-    setBoard,
-    setGameOver,
-    setDropTime,
-  ]);
 
   const hardDrop = useCallback(() => {
-    const dropRecursively = (currentPlayer: IPlayer) => {
-      if (!checkCollision(currentPlayer, board, { x: 0, y: 1 })) {
-        const newY = currentPlayer.pos.y + 1;
-        const updatedPlayer = {
-          ...currentPlayer,
-          pos: { x: currentPlayer.pos.x, y: newY },
-        };
-        console.log('feqfwe');
-        setPlayer(updatedPlayer);
-        dropRecursively(updatedPlayer);
-      } else {
-        drop();
-      }
-    };
+    let virtualPlayer = JSON.parse(JSON.stringify(player));
 
-    dropRecursively(player);
-  }, [player, board, checkCollision, drop]);
+    while (!checkCollision(virtualPlayer, board, { x: 0, y: 1 })) {
+      virtualPlayer.pos.y += 1;
+    }
+
+    lockAndReset(virtualPlayer, board);
+    
+  }, [player, board, checkCollision, lockAndReset]);
 
   const movePlayer = useCallback(
     (dir: number) => {
@@ -198,14 +193,14 @@ export const useTetris = () => {
   //   START GAME
   // ----------------------
 
-  // Active le drop automatique
   useInterval(() => {
     drop();
   }, dropTime);
 
   const startGame = () => {
-    setBoard(createBoard());
-    // resetPlayer();
+    const newBoard = createBoard();
+    setBoard(newBoard);
+    resetPlayer(newBoard);
     setGameOver(false);
     setDropTime(1000);
   };
