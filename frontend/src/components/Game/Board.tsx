@@ -1,14 +1,20 @@
 // Board.tsx
-import React, { useRef } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useTetris } from './useTetris';
 import { COLORS } from './constants';
 import './Board.css';
+import getSocket from '../../socket';
 
 function Board() {
   const location = useLocation();
+  const navigate = useNavigate();
   const name = location.state?.playerName || 'Player1';
+  const startGameState = location.state.startGame || false;
+  // use shared socket singleton instead of passing socket object through navigation state
+  const socket = getSocket();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const [gameStarted, setGameStarted] = useState(false);
 
   const {
     player,
@@ -21,6 +27,21 @@ function Board() {
     setDropTime,
     startGame,
   } = useTetris();
+
+  useEffect(() => {
+    if (startGameState && !gameStarted) {
+      setGameStarted(true)
+      startGame();
+    }
+  }, [startGame, startGameState])
+
+  useEffect(() => {
+    if (gameOver && socket) {
+      navigate('/');
+      socket.disconnect();
+    }
+  }, [gameOver, socket])
+
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (gameOver) return;
