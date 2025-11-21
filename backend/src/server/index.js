@@ -37,7 +37,7 @@ const initApp = (app, params, cb) => {
 };
 
 const initEngine = (io) => {
-  const games = {}; // Changed from an array to a dictionary
+  const games = {};
 
   io.on('connection', (socket) => {
     loginfo("Socket connected: " + socket.id);
@@ -46,10 +46,8 @@ const initEngine = (io) => {
       const roomName = Object.keys(games).find(
         (key) => games[key] && games[key].players && games[key].players.length === 1
       ) || `room${Object.keys(games).length}`;
-
-      if (!games[roomName]) {
-        games[roomName] = new Game(roomName);
-      }
+      console.log(games, roomName)
+      if (!games[roomName]) games[roomName] = new Game(roomName);
 
       const game = games[roomName];
 
@@ -63,9 +61,15 @@ const initEngine = (io) => {
 
       socket.join(game.roomName);
 
-      io.to(game.roomName).emit('playerJoined', {
+      socket.emit('playerJoined', {
         name: game.roomName,
         game: game.players.length === 2,
+        isYou: true,
+      });
+      socket.to(game.roomName).emit('playerJoined', {
+        name: game.roomName,
+        game: game.players.length === 2,
+        isYou: false,
       });
     });
 
@@ -73,13 +77,74 @@ const initEngine = (io) => {
       const game = games[roomName];
       if (game && socket.id) {
         game.startGame();
-        io.to(roomName).emit('gameStarted', { pieceSequence: game.pieceSequence });
+        io.to(roomName).emit('gameStarted', { pieceSequence: game.pieceSequence, players: games[roomName].players });
       }
     });
 
-    socket.on('movePiece', ({ roomName, move }) => {
+    const findLastOneIndex = (matrix) => {
+      let lastIndex = -1;
+    
+      for (let i = matrix.length - 1; i >= 0; i--) {
+        for (let j = matrix[i].length - 1; j >= 0; j--) {
+          if (matrix[i][j] === 1) {
+            return j;
+          }
+        }
+      }
+      return lastIndex + 1;
+    }
+
+    const findFirstOneIndex = (matrix) => {
+      for (let i = 0; i < matrix.length; i++) {
+        for (let j = 0; j < matrix[i].length; j++) {
+          if (matrix[i][j] === 1) {
+            return j;
+          }
+        }
+      }
+      return -1;
+    };
+
+    socket.on('movePiece', ({ roomName, move, socketId }) => {
       const game = games[roomName];
-      if (game) socket.to(roomName).emit('updatePiece', { move });
+      if (game) {
+        const player = game.players.find((p) => p.socket === socketId);
+        if (player && player.currentPiece) {
+          const piece = player.currentPiece;
+          const boardWidth = {start: 0, end: 10};
+
+          if ((move == 'right' && findLastOneIndex(piece.shape[piece.rotation]) + piece.position.x < boardWidth.end) ||
+              (move == 'left' && piece.position.x - findFirstOneIndex(piece.shape[piece.rotation]) > boardWidth.start)) {
+            if (move == 'right')
+              player.currentPiece.move(1);
+            else 
+              player.currentPiece.move(-1);
+            io.to(socketId).emit('updatePiece', { move });
+          }
+        }
+      }
+    });
+
+    socket.on('nextPiece', ({ roomName, socketId }) => {
+      const game = games[roomName];
+      if (game) {
+        const player = game.players.find((p) => p.socket === socketId);
+        if (player) {
+          const nextPiece = game.getNextPiece();
+          io.to(socketId).emit('updatePiece', { piece: nextPiece });
+        }
+      }
+    });
+
+    socket.on('rotatePiece', ({ roomName, socketId }) => {
+      const game = games[roomName];
+      if (game) {
+        const player = game.players.find((p) => p.socket === socketId);
+        if (player && player.currentPiece) {
+          player.currentPiece.rotate();
+          io.to(roomName).emit('updatePiece', { player: player.name, piece: player.currentPiece });
+        }
+      }
     });
 
     socket.on('disconnect', () => {
@@ -88,6 +153,7 @@ const initEngine = (io) => {
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
           game.removePlayer(player);
+          socket.to(roomName).emit('playerLeft');
           io.to(game.roomName).emit('playerLeft', { playerName: player.name });
           if (game.players.length === 0)
             delete games[roomName];

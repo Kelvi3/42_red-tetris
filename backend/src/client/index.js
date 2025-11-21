@@ -19,39 +19,59 @@ const store = createStore(
 
 const socket = io('http://127.0.0.1:3004/');
 
+let playerInfo = {};
+let input = '';
 socket.on('connect', () => {
-  console.log('Connected to server with ID:', socket.id);
-
-  socket.emit('joinRoom', { playerName: '' });
+  // socket.emit('joinRoom', { playerName: input });
 
   socket.on('playerJoined', (data) => {
-    console.log('Player joined:', data.name);
-    store.dispatch(alert(`${data.name} joined the game!`));
-    if (data.game)
+    store.dispatch(alert(`Search game...`));
+    playerInfo.roomName = data.name;
+    if (data.game) {
       socket.emit('startGame', { roomName: data.name });
+    }
   });
 
   socket.on('gameStarted', (data) => {
-    console.log('Game started with piece sequence:', data.pieceSequence);
-    store.dispatch(alert(`The game has started with ${data.pieceSequence} piece!`));
+    console.log(data)
+    store.dispatch(alert(`The game has started with ${data.pieceSequence} piece! ${data.players.map((e) => e.name).join(' vs ')}`));
+
+    const currentPlayer = data.players.find((p) => p.socket === socket.id);
+    if (currentPlayer) {
+      playerInfo.playerName = currentPlayer.name;
+    }
   });
 
   socket.on('updatePiece', (data) => {
     console.log('Piece updated:', data);
   });
+  
+  socket.on('playerLeft', () => {
+    store.dispatch(alert(`Player left, search game...`));
+  })
 });
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowLeft') {
-    socket.emit('movePiece', { roomName: 'room0', move: 'left' });
+    socket.emit('movePiece', { roomName: playerInfo.roomName, move: 'left', player: playerInfo.playerName, socketId: socket.id });
   } else if (event.key === 'ArrowRight') {
-    socket.emit('movePiece', { roomName: 'room0', move: 'right' });
+    socket.emit('movePiece', { roomName: playerInfo.roomName, move: 'right', player: playerInfo.playerName, socketId: socket.id });
+  } else if (event.key === 'ArrowUp') {
+    socket.emit('rotatePiece', { roomName: playerInfo.roomName, player: playerInfo.playerName, socketId: socket.id });
   }
 });
 
+function handleNextPiece() {
+  socket.emit('nextPiece', { roomName: playerInfo.roomName, socketId: socket.id });
+}
+
+const searchGame = () => {
+  socket.emit('joinRoom', { playerName: input });
+}
+
 ReactDom.render(
   <Provider store={store}>
-    <App />
+    <App inputVal={input} searchGame={searchGame} handleNextPiece={handleNextPiece}/>
   </Provider>,
   document.getElementById('tetris')
 );
