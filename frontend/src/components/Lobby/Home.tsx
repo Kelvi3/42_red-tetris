@@ -19,14 +19,13 @@ const Home = () => {
   //       body: JSON.stringify({ name })
   //     });
   //     const data = await response.json();
-  //     console.log(data);
   //   };
 
   return (
     <div className="home-container">
       <h1>Red Tetris</h1>
-      <input 
-        type="text" 
+      <input
+        type="text"
         placeholder="Enter your name"
         className="name-input"
         value={name}
