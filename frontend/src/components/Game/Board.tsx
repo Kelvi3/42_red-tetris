@@ -13,7 +13,7 @@ function Board() {
   const name = location.state?.playerName || 'Player1';
   const startGameState = location.state.startGame || false;
   const roomName = location.state?.roomName || null;
-  // use shared socket singleton instead of passing socket object through navigation state
+
   const socket = getSocket();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [gameStarted, setGameStarted] = useState(false);
@@ -51,10 +51,12 @@ function Board() {
 
     useEffect(() => {
       const handler = (data: any) => {
-        toast('You won!');
-        setDropTime(null);
-        setEnded(true);
-        setTimeout(() => navigate('/'), 1000);
+          toast('You won!');
+          setDropTime(null);
+          setEnded(true);
+          socket.emit('leaveRoom', { roomName }, (res: any) => {
+            setTimeout(() => navigate('/'), 1000);
+          });
       };
       socket.on('youWin', handler);
       return () => {
