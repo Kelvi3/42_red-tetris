@@ -77,7 +77,7 @@ const initEngine = (io) => {
       const game = games[roomName];
       if (game && socket.id) {
         game.startGame();
-        io.to(roomName).emit('gameStarted', { pieceSequence: game.pieceSequence, players: games[roomName].players });
+        io.to(roomName).emit('gameStarted', { pieceSequence: game.pieceSequence, players: games[roomName].players, roomName });
       }
     });
 
@@ -144,6 +144,22 @@ const initEngine = (io) => {
           player.currentPiece.rotate();
           io.to(roomName).emit('updatePiece', { player: player.name, piece: player.currentPiece });
         }
+      }
+    });
+
+    socket.on('playerLost', ({ roomName, playerName }, cb) => {
+      const game = games[roomName];
+      if (game) {
+        const player = game.players.find((p) => p.socket === socket.id);
+        if (player) {
+          player.isAlive = false;
+          socket.to(roomName).emit('youWin', { winnerName: playerName });
+          if (typeof cb === 'function') cb({ ok: true });
+        } else {
+          if (typeof cb === 'function') cb({ ok: false, reason: 'player not found' });
+        }
+      } else {
+        if (typeof cb === 'function') cb({ ok: false, reason: 'game not found' });
       }
     });
 

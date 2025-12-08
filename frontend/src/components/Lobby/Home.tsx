@@ -38,8 +38,9 @@ const Home = () => {
       });
 
       socket.on('gameStarted', (data) => {
-  // pass only serializable data in navigation state (socket object cannot be cloned)
-  navigate('/game', { state: { playerName: playerInfo.name, startGame: true, socketId: socket.id } });
+      const room = data.roomName || playerInfo.roomName;
+
+      navigate('/game', { state: { playerName: playerInfo.name, startGame: true, socketId: socket.id, roomName: room } });
         toast(
           `The game has started with ${data.pieceSequence} piece! ${data.players
             .map((e: playerInfoType) => e.name)
