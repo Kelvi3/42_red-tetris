@@ -5,6 +5,8 @@ let socket: Socket | null = null;
 export function getSocket(): Socket {
   if (!socket) {
     socket = io('http://127.0.0.1:3004/');
+  } else if (!socket.connected) {
+    socket.connect();
   }
   return socket;
 }
