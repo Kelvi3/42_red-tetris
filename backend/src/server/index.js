@@ -60,7 +60,6 @@ const initEngine = (io) => {
       game.addPlayer(player);
 
       socket.join(game.roomName);
-
       socket.emit('playerJoined', {
         name: game.roomName,
         game: game.players.length === 2,
@@ -71,6 +70,11 @@ const initEngine = (io) => {
         game: game.players.length === 2,
         isYou: false,
       });
+
+      if (game.players.length === 2) {
+        game.startGame();
+        io.to(game.roomName).emit('gameStarted', { pieceSequence: game.pieceSequence, players: games[game.roomName].players, roomName: game.roomName });
+      }
     });
 
     socket.on('startGame', ({ roomName }) => {
@@ -153,7 +157,9 @@ const initEngine = (io) => {
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
           player.isAlive = false;
+          game.removePlayer(player);
           socket.to(roomName).emit('youWin', { winnerName: playerName });
+          if (game.players.length === 0) delete games[roomName];
           if (typeof cb === 'function') cb({ ok: true });
         } else {
           if (typeof cb === 'function') cb({ ok: false, reason: 'player not found' });
@@ -161,6 +167,22 @@ const initEngine = (io) => {
       } else {
         if (typeof cb === 'function') cb({ ok: false, reason: 'game not found' });
       }
+    });
+
+    socket.on('leaveRoom', ({ roomName }, cb) => {
+      const game = games[roomName];
+      if (game) {
+        const player = game.players.find((p) => p.socket === socket.id);
+        if (player) {
+          game.removePlayer(player);
+          socket.leave(roomName);
+          socket.to(roomName).emit('playerLeft', { playerName: player.name });
+          if (game.players.length === 0) delete games[roomName];
+          if (typeof cb === 'function') cb({ ok: true });
+          return;
+        }
+      }
+      if (typeof cb === 'function') cb({ ok: false, reason: 'not found' });
     });
 
     socket.on('disconnect', () => {
