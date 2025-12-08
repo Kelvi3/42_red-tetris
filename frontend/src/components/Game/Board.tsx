@@ -1,6 +1,7 @@
 // Board.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { useTetris } from './useTetris';
 import { COLORS } from './constants';
 import './Board.css';
@@ -11,10 +12,12 @@ function Board() {
   const navigate = useNavigate();
   const name = location.state?.playerName || 'Player1';
   const startGameState = location.state.startGame || false;
+  const roomName = location.state?.roomName || null;
   // use shared socket singleton instead of passing socket object through navigation state
   const socket = getSocket();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [gameStarted, setGameStarted] = useState(false);
+  const [ended, setEnded] = useState(false);
 
   const {
     player,
@@ -37,14 +40,31 @@ function Board() {
 
   useEffect(() => {
     if (gameOver && socket) {
-      navigate('/');
-      socket.disconnect();
+        // notify server that this player lost so the other can be informed
+        socket.emit('playerLost', { roomName, playerName: name }, (res: any) => {
+          // client-side: after notifying server, disconnect and go back to menu
+          socket.disconnect();
+          navigate('/');
+        });
     }
   }, [gameOver, socket])
 
+    useEffect(() => {
+      const handler = (data: any) => {
+        toast('You won!');
+        setDropTime(null);
+        setEnded(true);
+        setTimeout(() => navigate('/'), 1000);
+      };
+      socket.on('youWin', handler);
+      return () => {
+        socket.off('youWin', handler);
+      };
+    }, [socket, navigate, setDropTime]);
+
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (gameOver) return;
+    if (gameOver || ended) return;
 
     const { key } = e;
     e.preventDefault();
@@ -74,7 +94,7 @@ function Board() {
   };
 
   const handleKeyUp = (e: React.KeyboardEvent) => {
-    if (gameOver) return;
+    if (gameOver || ended) return;
 
     if (e.key === "ArrowDown") {
       setDropTime(1000);
