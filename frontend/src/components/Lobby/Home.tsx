@@ -34,7 +34,7 @@ const Home = () => {
       const socketId = socket.id;
       const currentPlayer = data.players?.find((p: any) => p.socket === socketId);
       const playerName = currentPlayer ? currentPlayer.name : name;
-      navigate('/game', { state: { playerName, startGame: true, socketId: socket.id, roomName: room } });
+      navigate('/game', { state: { playerName, startGame: true, socketId: socket.id, roomName: room, pieceSequence: data.pieceSequence } });
       toast(
         `The game has started with ${data.pieceSequence} piece! ${data.players
           .map((e: playerInfoType) => e.name)

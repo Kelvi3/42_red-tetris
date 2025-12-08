@@ -1,12 +1,12 @@
 // useTetris.ts
 import { useState, useCallback, useEffect } from 'react';
-import { randomTetromino } from './tetreominoes';
-import Board from './Board';
+import { randomTetromino, TETROMINOS } from './tetreominoes';
+import { COLORS } from './constants';
 import { createBoard } from './gameHelper';
 import { ITetromino, IPlayer } from './types';
 import { useInterval } from './useInterval'; // Importe le hook
 
-export const useTetris = () => {
+export const useTetris = (initialPieceSequence?: string[] | null) => {
   // ----------------------
   //  STATE PRINCIPAL
   // ----------------------
@@ -20,6 +20,8 @@ export const useTetris = () => {
 
   const [dropTime, setDropTime] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
+  const pieceSequence = initialPieceSequence ?? [];
+  const [currentPieceIndex, setCurrentPieceIndex] = useState(0);
 
   // ----------------------
   //   COLLISIONS
@@ -56,7 +58,16 @@ export const useTetris = () => {
   //   RESET / SPAWN
   // ----------------------
   const resetPlayer = useCallback((boardToCheck: any[][]) => {
-    const newTet = randomTetromino();
+    const newTet = (() => {
+      if (pieceSequence && pieceSequence.length > 0) {
+        const type = pieceSequence[currentPieceIndex % pieceSequence.length];
+        setCurrentPieceIndex((i) => i + 1);
+        const color = COLORS.PALETTE[Math.floor(Math.random() * COLORS.PALETTE.length)];
+        const shape = TETROMINOS[type]?.shape || TETROMINOS['I'].shape;
+        return { shape, color } as any;
+      }
+      return randomTetromino();
+    })();
     
     // On vérifie sur le plateau qu'on vient de calculer (le plus récent)
     // et non sur l'état 'board' qui peut être en retard.
@@ -75,7 +86,7 @@ export const useTetris = () => {
         collided: false,
       });
     }
-  }, []);
+  }, [pieceSequence, currentPieceIndex]);
 
   // ----------------------
   //   ROTATION

@@ -13,6 +13,7 @@ function Board() {
   const name = location.state?.playerName || 'Player1';
   const startGameState = location.state.startGame || false;
   const roomName = location.state?.roomName || null;
+  const pieceSequence = location.state?.pieceSequence || null;
 
   const socket = getSocket();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -29,7 +30,7 @@ function Board() {
     playerRotate,
     setDropTime,
     startGame,
-  } = useTetris();
+  } = useTetris(pieceSequence);
 
   useEffect(() => {
     if (startGameState && !gameStarted) {
