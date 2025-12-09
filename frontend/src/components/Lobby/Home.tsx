@@ -48,7 +48,10 @@ const Home = () => {
     };
 
     const onPlayerLeft = (payload: any) => {
-      if (payload && payload.playerName) toast(`${payload.playerName} left, search game...`);
+      if (payload && payload.playerName)
+        toast(`${payload.playerName} left`);
+      else
+        toast('player left game')
       socket.disconnect();
     };
 
@@ -71,7 +74,8 @@ const Home = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, navigate]);
 
-  const handlePlay = () => {
+  const handlePlay = (solo: boolean) => {
+    if (solo) return;
     const socket = getSocket();
     socketRef.current = socket;
     socket.emit('joinRoom', { playerName: name });
@@ -82,12 +86,12 @@ const Home = () => {
       <h1>Red Tetris</h1>
       <input type="text" placeholder="Enter your name" className="name-input" value={name} onChange={(e) => setName(e.target.value)} />
       <div className="button-container">
-        <button className="game-button" onClick={handlePlay}>
+        <button className="game-button" onClick={() => handlePlay(true)}>
           Play
         </button>
-        <Link to="/multiplayer">
-          <button className="game-button">Multiplayer</button>
-        </Link>
+        <button onClick={() => handlePlay(false)} className="button-container">
+          Multiplayer
+        </button>
       </div>
     </div>
   );
