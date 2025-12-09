@@ -128,17 +128,26 @@ function Board() {
       onMouseEnter={() => wrapperRef.current?.focus()}
       style={{ outline: "none" }}
     >
-      <Link to="/">
-        <button className="game-button">Retour</button>
-      </Link>
+      <button className="game-button" onClick={() => {
+        if (socket && roomName) {
+          socket.emit('playerLost', { roomName, playerName: name }, (res: any) => {
+            socket.disconnect();
+            navigate('/');
+          });
+        } else {
+          navigate('/');
+        }
+      }}>Retour</button>      
+        <div className="header">
+          <h1>{name}</h1>
+          {gameOver && <h2 style={{ color: 'red' }}>GAME OVER</h2>}
+          {!socket.id &&
+            <button onClick={startGame} className="game-button">
+              {gameOver ? 'Recommencer' : 'Start Game'}
+            </button>
+          }
+        </div>
 
-      <div className="header">
-        <h1>{name}</h1>
-        {gameOver && <h2 style={{ color: 'red' }}>GAME OVER</h2>}
-        <button onClick={startGame} className="game-button">
-          {gameOver ? 'Recommencer' : 'Start Game'}
-        </button>
-      </div>
 
       <div className="board">
         {boardState.map((row, rowIndex) => (
