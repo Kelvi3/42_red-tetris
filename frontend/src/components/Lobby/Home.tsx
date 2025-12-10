@@ -2,9 +2,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import './Home.css';
-import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useSocket } from '../../context/SocketContext';
+import { Socket } from 'socket.io-client';
 
 type playerInfoType = {
   roomName?: string;
@@ -16,7 +16,7 @@ type playerInfoType = {
 const Home = () => {
   const [name, setName] = useState('');
   const navigate = useNavigate();
-  const socketRef = useRef<any>(null);
+  const socketRef = useRef<Socket | null>(null);
   const { socket, connect } = useSocket();
   const [playerInfo, setPlayerInfo] = useState<playerInfoType>({});
   const [waiting, setWaiting] = useState(false);
@@ -25,14 +25,17 @@ const Home = () => {
     const s = socket;
     socketRef.current = s;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onPlayerJoined = (data: any) => {
       setPlayerInfo((prev) => ({ ...prev, roomName: data.name }));
       if (data.isYou) toast('search game');
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onGameStarted = (data: any) => {
       const room = data.roomName || playerInfo.roomName;
       const socketId = socket ? socket.id : null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const currentPlayer = data.players?.find((p: any) => p.socket === socketId);
       const playerName = currentPlayer ? currentPlayer.name : name;
       setWaiting(false);
@@ -46,10 +49,12 @@ const Home = () => {
       if (currentPlayer) setPlayerInfo((prev) => ({ ...prev, playerName: currentPlayer.name }));
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onUpdatePiece = (data: any) => {
       console.log('Piece updated:', data);
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onPlayerLeft = (payload: any) => {
       if (payload && payload.playerName)
         toast(`${payload.playerName} left`);
@@ -106,7 +111,7 @@ const Home = () => {
       </div>
       {waiting && (
         <div style={{ marginTop: 12 }}>
-          <p>En attente d'un adversaire...</p>
+          <p>En attente d&apos;un adversaire...</p>
         </div>
       )}
     </div>

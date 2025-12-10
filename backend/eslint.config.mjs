@@ -1,30 +1,37 @@
 import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
-import jsxA11y from 'eslint-plugin-jsx-a11y';
 import prettier from 'eslint-config-prettier';
 import globals from 'globals';
+import babelParser from '@babel/eslint-parser';
 
-export default tseslint.config(
+export default [
   {
-    ignores: ["dist", "node_modules", "eslint.config.js"],
+    ignores: ["dist", "node_modules", "*.lock", "*.tmp", "coverage"],
   },
   eslint.configs.recommended,
-  ...tseslint.configs.recommended,
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ['**/*.js', '**/*.jsx'],
     languageOptions: {
-      ecmaVersion: 2020,
-      globals: {
-        ...globals.browser,
-        ...globals.es2021,
-      },
+      parser: babelParser,
       parserOptions: {
+        requireConfigFile: false,
+        babelOptions: {
+          babelrc: false,
+          configFile: false,
+          presets: ["@babel/preset-react"],
+        },
         ecmaFeatures: {
           jsx: true,
         },
+      },
+      ecmaVersion: 2020,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.es2015,
       },
     },
     settings: {
@@ -35,20 +42,27 @@ export default tseslint.config(
     plugins: {
       react,
       'react-hooks': reactHooks,
-      'jsx-a11y': jsxA11y,
       'react-refresh': reactRefresh,
     },
     rules: {
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      ...jsxA11y.configs.recommended.rules,
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
       ],
-      '@typescript-eslint/no-unused-vars': ['error', { 'varsIgnorePattern': '^_', 'argsIgnorePattern': '^_' }],
-      "react/react-in-jsx-scope": "off",
+      "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      "react/prop-types": "off",
+      // react-in-jsx-scope is required for React < 17. The recommended config enables it.
+    }
+  },
+  {
+    files: ['test/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.mocha,
+      }
     }
   },
   prettier,
-);
+];

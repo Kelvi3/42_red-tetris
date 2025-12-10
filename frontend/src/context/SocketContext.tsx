@@ -5,7 +5,7 @@ type SocketContextType = {
   socket: Socket | null;
   connect: () => Socket;
   disconnect: () => void;
-  leaveRoom: (roomName?: string) => Promise<any>;
+  leaveRoom: (roomName?: string) => Promise<unknown>;
 };
 
 const SocketContext = createContext<SocketContextType | undefined>(undefined);
@@ -27,7 +27,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (socket) {
       try {
         socket.disconnect();
-      } catch (e) {
+      } catch {
         // ignore
       }
       setSocket(null);
@@ -35,12 +35,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [socket]);
 
   const leaveRoom = useCallback((roomName?: string) => {
-    return new Promise((resolve) => {
+    return new Promise<unknown>((resolve) => {
       if (socket && roomName) {
         try {
-          socket.emit('leaveRoom', { roomName }, (res: any) => {
+          socket.emit('leaveRoom', { roomName }, (res: unknown) => {
             resolve(res);
-            try { socket.disconnect(); } catch (e) {}
+            try { socket.disconnect(); } catch { /* ignore */ }
             setSocket(null);
           });
         } catch (err) {
@@ -59,6 +59,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSocket = () => {
   const ctx = useContext(SocketContext);
   if (!ctx) throw new Error('useSocket must be used within a SocketProvider');

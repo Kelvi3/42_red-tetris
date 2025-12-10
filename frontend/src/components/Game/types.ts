@@ -12,4 +12,4 @@ export interface IPlayer {
   collided: boolean;
 }
 
-export type BoardGrid = string[][];
+export type BoardGrid = (string | null)[][];

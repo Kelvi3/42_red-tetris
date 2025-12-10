@@ -1,5 +1,4 @@
 const Piece = require('./piece');
-const Player = require('./player');
 
 class Game {
   constructor(roomName) {
