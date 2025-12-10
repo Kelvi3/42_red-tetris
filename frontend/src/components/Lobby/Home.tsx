@@ -17,7 +17,7 @@ const Home = () => {
   const [name, setName] = useState('');
   const navigate = useNavigate();
   const socketRef = useRef<any>(null);
-  const { socket, connect } = useSocket();
+  const { socket, connect, leaveRoom, disconnect } = useSocket();
   const [playerInfo, setPlayerInfo] = useState<playerInfoType>({});
   const [waiting, setWaiting] = useState(false);
 
@@ -92,6 +92,22 @@ const Home = () => {
     s.emit('joinRoom', { playerName: name });
   };
 
+  const cancelSearch = async () => {
+    setWaiting(false);
+    const room = playerInfo.roomName;
+    try {
+      if (room) {
+        await leaveRoom(room);
+      } else {
+        disconnect();
+      }
+    } catch (err) {
+      console.error('cancelSearch error', err);
+      try { disconnect(); } catch (e) {}
+    }
+    setPlayerInfo({});
+  };
+
   return (
     <div className="home-container">
       <h1>Red Tetris</h1>
@@ -100,9 +116,15 @@ const Home = () => {
         <button className="game-button" onClick={() => handlePlay(true)}>
           Play
         </button>
-        <button onClick={() => handlePlay(false)} className="button-container">
-          Multiplayer
-        </button>
+        {waiting ? (
+          <button onClick={cancelSearch} className="game-button">
+            Annuler
+          </button>
+        ) : (
+          <button onClick={() => handlePlay(false)} className="game-button">
+            Multiplayer
+          </button>
+        )}
       </div>
       {waiting && (
         <div style={{ marginTop: 12 }}>
