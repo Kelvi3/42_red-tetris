@@ -1,21 +1,49 @@
 // Board.tsx
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
+import { useLocation, Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useTetris } from './useTetris';
 import { COLORS } from './constants';
 import './Board.css';
-import getSocket from '../../socket';
+import { useSocket } from '../../context/SocketContext';
 
 function Board() {
   const location = useLocation();
   const navigate = useNavigate();
-  const name = location.state?.playerName || 'Player1';
-  const startGameState = location.state.startGame || false;
-  const roomName = location.state?.roomName || null;
+  const params = useParams();
+  const name = params.player || location.state?.playerName || 'Player1';
+  const startGameState = location.state?.startGame || false;
+  const roomName = params.room || location.state?.roomName || null;
   const pieceSequence = location.state?.pieceSequence || null;
+  const { socket, connect, leaveRoom, disconnect } = useSocket();
 
-  const socket = getSocket();
+  const [validated, setValidated] = useState<boolean | null>(startGameState ? true : null);
+
+  useEffect(() => {
+    if (startGameState) return;
+
+    if (!roomName || !name) {
+      toast.info("Accès refusé — revenez depuis le Lobby");
+      navigate('/', { replace: true });
+      return;
+    }
+
+    setValidated(null);
+
+    const s = socket || connect();
+
+    s.emit('canJoinRoom', { roomName, playerName: name }, (res: any) => {
+      if (!res || !res.ok) {
+        toast.info("La partie est terminée ou vous n'êtes pas autorisé à la rejoindre");
+        setValidated(false);
+        navigate('/', { replace: true });
+        return;
+      }
+
+      setValidated(true);
+    });
+  }, [startGameState, navigate, roomName, name, socket]);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [ended, setEnded] = useState(false);
@@ -32,6 +60,14 @@ function Board() {
     startGame,
   } = useTetris(pieceSequence);
 
+  if (validated === null) {
+    return (
+      <div style={{ padding: 20 }}>
+        <p>Vérification de la partie en cours...</p>
+      </div>
+    );
+  }
+
   useEffect(() => {
     if (startGameState && !gameStarted) {
       setGameStarted(true)
@@ -40,30 +76,99 @@ function Board() {
   }, [startGame, startGameState])
 
   useEffect(() => {
-    if (gameOver && socket) {
-        // notify server that this player lost so the other can be informed
-        socket.emit('playerLost', { roomName, playerName: name }, (res: any) => {
-          // client-side: after notifying server, disconnect and go back to menu
-          socket.disconnect();
-          navigate('/');
-        });
+    if (!socket || !socket.id) {
+
+      navigate('/');
     }
-  }, [gameOver, socket])
+  }, [socket, navigate]);
+
+  useEffect(() => {
+    if (gameOver) {
+      const s = socket || connect();
+      s.emit('playerLost', { roomName, playerName: name }, (res: any) => {
+        try { disconnect(); } catch (e) {}
+        navigate('/');
+      });
+    }
+  }, [gameOver, socket, connect, disconnect, navigate, roomName, name])
 
     useEffect(() => {
       const handler = (data: any) => {
-          toast('You won!');
-          setDropTime(null);
-          setEnded(true);
-          socket.emit('leaveRoom', { roomName }, (res: any) => {
-            setTimeout(() => navigate('/'), 1000);
-          });
+        toast('You won!');
+        setDropTime(null);
+        setEnded(true);
+
+        leaveRoom(roomName).then(() => {
+          navigate('/');
+        });
       };
-      socket.on('youWin', handler);
+
+      if (socket) socket.on('youWin', handler);
+
       return () => {
-        socket.off('youWin', handler);
+        if (socket) socket.off('youWin', handler);
       };
-    }, [socket, navigate, setDropTime]);
+    }, [socket, navigate, setDropTime, leaveRoom, roomName]);
+
+    useEffect(() => {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (socket && roomName) {
+          try {
+            console.log('[Board] beforeunload: emit leaveRoom', { roomName, socketId: socket.id });
+            socket.emit('leaveRoom', { roomName });
+          } catch (err) {
+            console.error('[Board] beforeunload: emit failed', err);
+          }
+        }
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        if (roomName) {
+          leaveRoom(roomName).then((res) => {
+            console.log('[Board] leaveRoom result on unmount', res);
+          });
+        }
+      };
+    }, [socket, roomName, leaveRoom]);
+
+    useEffect(() => {
+      const onPlayerLeft = (data: any) => {
+        console.log('[Board] received playerLeft', data);
+        const leftName = data?.playerName || 'Opponent';
+        toast.info(`${leftName} a quitté la partie`);
+        setDropTime(null);
+        setEnded(true);
+        setTimeout(() => {
+          try { disconnect(); } catch (err) {}
+          navigate('/');
+        }, 500);
+      };
+
+      if (socket) socket.on('playerLeft', onPlayerLeft);
+      return () => {
+        if (socket) socket.off('playerLeft', onPlayerLeft);
+      };
+    }, [socket, navigate, setDropTime, disconnect]);
+
+    useEffect(() => {
+      const onAlone = (data: any) => {
+        toast.info('Vous êtes seul dans la partie, retour au lobby');
+        setDropTime(null);
+        setEnded(true);
+        setTimeout(() => {
+          try { disconnect(); } catch (e) {}
+          navigate('/');
+        }, 500);
+      };
+
+      if (socket) socket.on('alone', onAlone);
+      return () => {
+        if (socket) socket.off('alone', onAlone);
+      };
+    }, [socket, navigate, setDropTime, disconnect]);
 
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -129,9 +234,10 @@ function Board() {
       style={{ outline: "none" }}
     >
       <button className="game-button" onClick={() => {
-        if (socket && roomName) {
-          socket.emit('playerLost', { roomName, playerName: name }, (res: any) => {
-            socket.disconnect();
+        if (roomName) {
+          const s = socket || connect();
+          s.emit('playerLost', { roomName, playerName: name }, (res: any) => {
+            try { disconnect(); } catch (e) {}
             navigate('/');
           });
         } else {
@@ -141,11 +247,11 @@ function Board() {
         <div className="header">
           <h1>{name}</h1>
           {gameOver && <h2 style={{ color: 'red' }}>GAME OVER</h2>}
-          {!socket.id &&
+          {/* {!socket.id &&
             <button onClick={startGame} className="game-button">
               {gameOver ? 'Recommencer' : 'Start Game'}
             </button>
-          }
+          } */}
         </div>
 
 

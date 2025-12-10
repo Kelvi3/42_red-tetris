@@ -12,7 +12,7 @@ function App() {
       <ToastContainer />
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/game" element={<Board />} />
+        <Route path="/:room/:player" element={<Board />} />
       </Routes>
     </BrowserRouter>
   );

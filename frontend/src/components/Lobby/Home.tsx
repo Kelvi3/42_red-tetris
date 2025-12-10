@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import './Home.css';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import getSocket from '../../socket';
-import type { Socket } from 'socket.io-client';
+import { useSocket } from '../../context/SocketContext';
 
 type playerInfoType = {
   roomName?: string;
@@ -17,12 +16,14 @@ type playerInfoType = {
 const Home = () => {
   const [name, setName] = useState('');
   const navigate = useNavigate();
-  const socketRef = useRef<Socket | null>(null);
+  const socketRef = useRef<any>(null);
+  const { socket, connect } = useSocket();
   const [playerInfo, setPlayerInfo] = useState<playerInfoType>({});
+  const [waiting, setWaiting] = useState(false);
 
   useEffect(() => {
-    const socket = getSocket();
-    socketRef.current = socket;
+    const s = socket;
+    socketRef.current = s;
 
     const onPlayerJoined = (data: any) => {
       setPlayerInfo((prev) => ({ ...prev, roomName: data.name }));
@@ -31,12 +32,14 @@ const Home = () => {
 
     const onGameStarted = (data: any) => {
       const room = data.roomName || playerInfo.roomName;
-      const socketId = socket.id;
+      const socketId = socket ? socket.id : null;
       const currentPlayer = data.players?.find((p: any) => p.socket === socketId);
       const playerName = currentPlayer ? currentPlayer.name : name;
-      navigate('/game', { state: { playerName, startGame: true, socketId: socket.id, roomName: room, pieceSequence: data.pieceSequence } });
+      setWaiting(false);
+      navigate(`/${room}/${playerName}`, { state: { playerName, startGame: true, socketId, roomName: room, pieceSequence: data.pieceSequence } });
+
       toast(
-        `The game has started with ${data.pieceSequence} piece! ${data.players
+        `The game has started! ${data.players
           .map((e: playerInfoType) => e.name)
           .join(' vs ')}`
       );
@@ -52,33 +55,41 @@ const Home = () => {
         toast(`${payload.playerName} left`);
       else
         toast('player left game')
-      socket.disconnect();
     };
 
-    socket.off('playerJoined', onPlayerJoined);
-    socket.off('gameStarted', onGameStarted);
-    socket.off('updatePiece', onUpdatePiece);
-    socket.off('playerLeft', onPlayerLeft);
+    if (s) {
+      s.off('playerJoined', onPlayerJoined);
+      s.off('gameStarted', onGameStarted);
+      s.off('updatePiece', onUpdatePiece);
+      s.off('playerLeft', onPlayerLeft);
 
-    socket.on('playerJoined', onPlayerJoined);
-    socket.on('gameStarted', onGameStarted);
-    socket.on('updatePiece', onUpdatePiece);
-    socket.on('playerLeft', onPlayerLeft);
+      s.on('playerJoined', onPlayerJoined);
+      s.on('gameStarted', onGameStarted);
+      s.on('updatePiece', onUpdatePiece);
+      s.on('playerLeft', onPlayerLeft);
+    }
 
     return () => {
-      socket.off('playerJoined', onPlayerJoined);
-      socket.off('gameStarted', onGameStarted);
-      socket.off('updatePiece', onUpdatePiece);
-      socket.off('playerLeft', onPlayerLeft);
+      if (s) {
+        s.off('playerJoined', onPlayerJoined);
+        s.off('gameStarted', onGameStarted);
+        s.off('updatePiece', onUpdatePiece);
+        s.off('playerLeft', onPlayerLeft);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, navigate]);
+  }, [name, navigate, socket]);
 
   const handlePlay = (solo: boolean) => {
     if (solo) return;
-    const socket = getSocket();
-    socketRef.current = socket;
-    socket.emit('joinRoom', { playerName: name });
+    if (!name || name.trim().length === 0) {
+      toast('Please enter a name');
+      return;
+    }
+    setWaiting(true);
+    const s = socket || connect();
+    socketRef.current = s;
+    s.emit('joinRoom', { playerName: name });
   };
 
   return (
@@ -93,6 +104,11 @@ const Home = () => {
           Multiplayer
         </button>
       </div>
+      {waiting && (
+        <div style={{ marginTop: 12 }}>
+          <p>En attente d'un adversaire...</p>
+        </div>
+      )}
     </div>
   );
 };
