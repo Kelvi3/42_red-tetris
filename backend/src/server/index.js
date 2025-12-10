@@ -38,15 +38,17 @@ const initApp = (app, params, cb) => {
 
 const initEngine = (io) => {
   const games = {};
+  let roomCounter = 0;
 
   io.on('connection', (socket) => {
     loginfo("Socket connected: " + socket.id);
 
     socket.on('joinRoom', ({ playerName }) => {
-      const roomName = Object.keys(games).find(
+      const waitingRoom = Object.keys(games).find(
         (key) => games[key] && games[key].players && games[key].players.length === 1
-      ) || `room${Object.keys(games).length}`;
-      console.log(games, roomName)
+      );
+      const roomName = waitingRoom || `room${roomCounter++}`;
+
       if (!games[roomName]) games[roomName] = new Game(roomName);
 
       const game = games[roomName];
@@ -83,6 +85,18 @@ const initEngine = (io) => {
         game.startGame();
         io.to(roomName).emit('gameStarted', { pieceSequence: game.pieceSequence, players: games[roomName].players, roomName });
       }
+    });
+
+    socket.on('canJoinRoom', ({ roomName, playerName }, cb) => {
+      const game = games[roomName];
+      if (game) {
+        const player = game.players.find((p) => p.socket === socket.id && p.name === playerName);
+        if (player) {
+          if (typeof cb === 'function') cb({ ok: true });
+          return;
+        }
+      }
+      if (typeof cb === 'function') cb({ ok: false });
     });
 
     const findLastOneIndex = (matrix) => {
@@ -158,6 +172,7 @@ const initEngine = (io) => {
         if (player) {
           player.isAlive = false;
           game.removePlayer(player);
+          console.log(`[server] playerLost: socket=${socket.id} player=${playerName} room=${roomName}`);
           socket.to(roomName).emit('youWin', { winnerName: playerName });
           if (game.players.length === 0) delete games[roomName];
           if (typeof cb === 'function') cb({ ok: true });
@@ -174,11 +189,18 @@ const initEngine = (io) => {
       if (game) {
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
-          game.removePlayer(player);
-          socket.leave(roomName);
-          socket.to(roomName).emit('playerLeft', { playerName: player.name });
-          if (game.players.length === 0) delete games[roomName];
-          if (typeof cb === 'function') cb({ ok: true });
+            console.log(`[server] leaveRoom: socket=${socket.id} player=${player.name} room=${roomName}`);
+            game.removePlayer(player);
+            socket.leave(roomName);
+            socket.to(roomName).emit('playerLeft', { playerName: player.name });
+
+            if (game.players.length === 1) {
+              const remaining = game.players[0];
+              console.log(`[server] leaveRoom: notifying remaining socket=${remaining.socket} they are alone`);
+              io.to(remaining.socket).emit('alone', { playerCount: 1 });
+            }
+            if (game.players.length === 0) delete games[roomName];
+            if (typeof cb === 'function') cb({ ok: true });
           return;
         }
       }
@@ -190,11 +212,33 @@ const initEngine = (io) => {
         const game = games[roomName];
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
-          game.removePlayer(player);
-          socket.to(roomName).emit('playerLeft');
-          io.to(game.roomName).emit('playerLeft', { playerName: player.name });
-          if (game.players.length === 0)
+          console.log(`[server] disconnect: socket=${socket.id} player=${player.name} room=${roomName} isStarted=${game.isStarted}`);
+          const otherPlayers = game.players.filter((p) => p.socket !== socket.id);
+
+          if (game.isStarted) {
+            game.removePlayer(player);
+            if (otherPlayers.length > 0) {
+              const winner = otherPlayers[0];
+
+              io.to(winner.socket).emit('youWin', { winnerName: winner.name });
+              io.to(game.roomName).emit('playerLeft', { playerName: player.name });
+              
+              if (game.players.length === 1) {
+                const remaining = game.players[0];
+                io.to(remaining.socket).emit('alone', { playerCount: 1 });
+              }
+            }
             delete games[roomName];
+          } else {
+            game.removePlayer(player);
+            io.to(game.roomName).emit('playerLeft', { playerName: player.name });
+            if (game.players.length === 1) {
+              const remaining = game.players[0];
+              console.log(`[server] disconnect: notifying remaining socket=${remaining.socket} they are alone`);
+              io.to(remaining.socket).emit('alone', { playerCount: 1 });
+            }
+            if (game.players.length === 0) delete games[roomName];
+          }
           break;
         }
       }
