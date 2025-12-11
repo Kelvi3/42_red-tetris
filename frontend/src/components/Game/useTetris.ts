@@ -54,9 +54,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
   // ----------------------
   //   RESET / SPAWN
   // ----------------------
-// ----------------------
-  //   RESET / SPAWN
-  // ----------------------
   const resetPlayer = useCallback((boardToCheck: any[][]) => {
     const newTet = (() => {
       if (pieceSequence && pieceSequence.length > 0) {
@@ -99,10 +96,17 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
       const clonedPlayer = JSON.parse(JSON.stringify(player));
       clonedPlayer.tetromino = rotate(clonedPlayer.tetromino);
 
-      if (checkCollision(clonedPlayer, board, { x: 0, y: 0 })) {
-        return;
+      const pos = clonedPlayer.pos.x;
+      let offset = 1;
+      while (checkCollision(clonedPlayer, board, { x: 0, y: 0 })) {
+        clonedPlayer.pos.x += offset;
+        offset = -(offset + (offset > 0 ? 1 : -1));
+        if (offset > clonedPlayer.tetromino[0].length) {
+          rotate(clonedPlayer.tetromino);
+          clonedPlayer.pos.x = pos;
+          return;
+        }
       }
-      console.log('rotate');
       setPlayer(clonedPlayer);
     },
     [player, checkCollision]
