@@ -43,15 +43,42 @@ const initEngine = (io) => {
   io.on('connection', (socket) => {
     loginfo("Socket connected: " + socket.id);
 
-    socket.on('joinRoom', ({ playerName }) => {
-      const waitingRoom = Object.keys(games).find(
-        (key) => games[key] && games[key].players && games[key].players.length === 1
-      );
-      const roomName = waitingRoom || `room${roomCounter++}`;
+    socket.on('joinRoom', ({ playerName, roomName, action }) => { // action: 'create' | 'join'
+      if (!roomName) {
+        // Auto-matchmaking logic (keeps compatibility if needed, though UI enforces input now)
+        if (action === 'join') {
+             socket.emit('roomError', 'Room name is required to join.');
+             return;
+        }
+        const waitingRoom = Object.keys(games).find(
+          (key) => games[key] && games[key].players && games[key].players.length === 1
+        );
+        roomName = waitingRoom || `room${roomCounter++}`;
+      }
+
+      // Validation logic
+      if (action === 'join' && !games[roomName]) {
+        socket.emit('roomError', `Room '${roomName}' does not exist.`);
+        return;
+      }
+      if (action === 'create' && games[roomName]) {
+        socket.emit('roomError', `Room '${roomName}' already exists.`);
+        return;
+      }
 
       if (!games[roomName]) games[roomName] = new Game(roomName);
 
       const game = games[roomName];
+
+      if (game.players.length >= 2) {
+         socket.emit('roomError', 'Room is full');
+         return;
+      }
+
+      if (game.isStarted) {
+        socket.emit('roomError', 'Game already started');
+        return;
+      }
 
       if (!playerName && game.players.length === 0)
         playerName = 'player1';
@@ -66,6 +93,7 @@ const initEngine = (io) => {
         name: game.roomName,
         game: game.players.length === 2,
         isYou: true,
+        isHost: game.host && game.host.socket === socket.id
       });
       socket.to(game.roomName).emit('playerJoined', {
         name: game.roomName,
@@ -73,15 +101,25 @@ const initEngine = (io) => {
         isYou: false,
       });
 
-      if (game.players.length === 2) {
-        game.startGame();
-        io.to(game.roomName).emit('gameStarted', { pieceSequence: game.pieceSequence, players: games[game.roomName].players, roomName: game.roomName });
-      }
+      // Send updated player list to everyone in the room
+      const playerList = game.players.map(p => ({ name: p.name, isHost: p.isHost }));
+      io.to(game.roomName).emit('updatePlayerList', playerList);
     });
 
     socket.on('startGame', ({ roomName }) => {
       const game = games[roomName];
       if (game && socket.id) {
+        // Only host can start the game
+        if (game.host && game.host.socket !== socket.id) {
+           return;
+        }
+
+        // Add check for minimum players
+        if (game.players.length < 2) {
+          socket.emit('roomError', 'Cannot start game with less than 2 players.');
+          return;
+        }
+
         game.startGame();
         io.to(roomName).emit('gameStarted', { pieceSequence: game.pieceSequence, players: games[roomName].players, roomName });
       }
@@ -192,7 +230,13 @@ const initEngine = (io) => {
             console.log(`[server] leaveRoom: socket=${socket.id} player=${player.name} room=${roomName}`);
             game.removePlayer(player);
             socket.leave(roomName);
+            
+            // Notify remaining players about the departure and update list
             socket.to(roomName).emit('playerLeft', { playerName: player.name });
+            if (!game.isStarted) {
+                const playerList = game.players.map(p => ({ name: p.name, isHost: p.isHost }));
+                io.to(roomName).emit('updatePlayerList', playerList);
+            }
 
             if (game.players.length === 1) {
               const remaining = game.players[0];
@@ -232,6 +276,11 @@ const initEngine = (io) => {
           } else {
             game.removePlayer(player);
             io.to(game.roomName).emit('playerLeft', { playerName: player.name });
+            
+            // Update list for those waiting
+            const playerList = game.players.map(p => ({ name: p.name, isHost: p.isHost }));
+            io.to(game.roomName).emit('updatePlayerList', playerList);
+
             if (game.players.length === 1) {
               const remaining = game.players[0];
               console.log(`[server] disconnect: notifying remaining socket=${remaining.socket} they are alone`);
