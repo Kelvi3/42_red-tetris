@@ -56,7 +56,7 @@ export const TETROMINOS: { [key: string]: { shape: TetrominoShape } } = {
 };
 
 export const randomTetromino = (): ITetromino => {
-  const keys = Object.keys(TETROMINOS);
+  const keys = 'IJLOSTZ';
   const randKey = keys[Math.floor(Math.random() * keys.length)];
   const randColor = COLORS.PALETTE[Math.floor(Math.random() * COLORS.PALETTE.length)];
 

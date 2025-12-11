@@ -16,11 +16,12 @@ function Board() {
   const roomName = params.room || location.state?.roomName || null;
   const pieceSequence = location.state?.pieceSequence || null;
   const { socket, connect, leaveRoom, disconnect } = useSocket();
+  const isSolo = roomName === 'solo';
 
-  const [validated, setValidated] = useState<boolean | null>(startGameState ? true : null);
+  const [validated, setValidated] = useState<boolean | null>(startGameState || isSolo ? true : null);
 
   useEffect(() => {
-    if (startGameState) return;
+    if (startGameState || isSolo) return;
 
     if (!roomName || !name) {
       toast.info("Accès refusé — revenez depuis le Lobby");
@@ -42,7 +43,7 @@ function Board() {
 
       setValidated(true);
     });
-  }, [startGameState, navigate, roomName, name, socket]);
+  }, [startGameState, navigate, roomName, name, socket, isSolo]);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [gameStarted, setGameStarted] = useState(false);
@@ -76,23 +77,26 @@ function Board() {
   }, [startGame, startGameState])
 
   useEffect(() => {
+    if (isSolo) return;
     if (!socket || !socket.id) {
 
       navigate('/');
     }
-  }, [socket, navigate]);
+  }, [socket, navigate, isSolo]);
 
   useEffect(() => {
     if (gameOver) {
+      if (isSolo) return;
       const s = socket || connect();
       s.emit('playerLost', { roomName, playerName: name }, (res: any) => {
         try { disconnect(); } catch (e) {}
         navigate('/');
       });
     }
-  }, [gameOver, socket, connect, disconnect, navigate, roomName, name])
+  }, [gameOver, socket, connect, disconnect, navigate, roomName, name, isSolo])
 
     useEffect(() => {
+      if (isSolo) return;
       const handler = (data: any) => {
         toast('You won!');
         setDropTime(null);
@@ -108,9 +112,10 @@ function Board() {
       return () => {
         if (socket) socket.off('youWin', handler);
       };
-    }, [socket, navigate, setDropTime, leaveRoom, roomName]);
+    }, [socket, navigate, setDropTime, leaveRoom, roomName, isSolo]);
 
     useEffect(() => {
+      if (isSolo) return;
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
         if (socket && roomName) {
           try {
@@ -132,9 +137,10 @@ function Board() {
           });
         }
       };
-    }, [socket, roomName, leaveRoom]);
+    }, [socket, roomName, leaveRoom, isSolo]);
 
     useEffect(() => {
+      if (isSolo) return;
       const onPlayerLeft = (data: any) => {
         console.log('[Board] received playerLeft', data);
         const leftName = data?.playerName || 'Opponent';
@@ -151,9 +157,10 @@ function Board() {
       return () => {
         if (socket) socket.off('playerLeft', onPlayerLeft);
       };
-    }, [socket, navigate, setDropTime, disconnect]);
+    }, [socket, navigate, setDropTime, disconnect, isSolo]);
 
     useEffect(() => {
+      if (isSolo) return;
       const onAlone = (data: any) => {
         toast.info('Vous êtes seul dans la partie, retour au lobby');
         setDropTime(null);
@@ -168,7 +175,7 @@ function Board() {
       return () => {
         if (socket) socket.off('alone', onAlone);
       };
-    }, [socket, navigate, setDropTime, disconnect]);
+    }, [socket, navigate, setDropTime, disconnect, isSolo]);
 
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -234,7 +241,7 @@ function Board() {
       style={{ outline: "none" }}
     >
       <button className="game-button" onClick={() => {
-        if (roomName) {
+        if (roomName && !isSolo) {
           const s = socket || connect();
           s.emit('playerLost', { roomName, playerName: name }, (res: any) => {
             try { disconnect(); } catch (e) {}
@@ -247,11 +254,11 @@ function Board() {
         <div className="header">
           <h1>{name}</h1>
           {gameOver && <h2 style={{ color: 'red' }}>GAME OVER</h2>}
-          {/* {!socket.id &&
+          {isSolo && (
             <button onClick={startGame} className="game-button">
               {gameOver ? 'Recommencer' : 'Start Game'}
             </button>
-          } */}
+          )}
         </div>
 
 

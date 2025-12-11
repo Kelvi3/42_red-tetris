@@ -12,9 +12,9 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
   // ----------------------
   const [board, setBoard] = useState<any[][]>(createBoard());
   const [player, setPlayer] = useState<IPlayer>({
-    pos: { x: 3, y: 0 },
-    tetromino: randomTetromino().shape,
-    color: randomTetromino().color,
+    pos: { x: 0, y: 0 },
+    tetromino: TETROMINOS[0].shape,
+    color: '',
     collided: false,
   });
 

@@ -81,7 +81,10 @@ const Home = () => {
   }, [name, navigate, socket]);
 
   const handlePlay = (solo: boolean) => {
-    if (solo) return;
+    if (solo) {
+      navigate('/solo');
+      return;
+    }
     if (!name || name.trim().length === 0) {
       toast('Please enter a name');
       return;
