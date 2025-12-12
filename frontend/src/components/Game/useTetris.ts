@@ -1,15 +1,11 @@
-// useTetris.ts
 import { useState, useCallback, useEffect } from 'react';
 import { randomTetromino, TETROMINOS } from './tetreominoes';
 import { COLORS } from './constants';
 import { createBoard } from './gameHelper';
-import { ITetromino, IPlayer } from './types';
-import { useInterval } from './useInterval'; // Importe le hook
+import { IPlayer } from './types';
+import { useInterval } from './useInterval';
 
 export const useTetris = (initialPieceSequence?: string[] | null) => {
-  // ----------------------
-  //  STATE PRINCIPAL
-  // ----------------------
   const [board, setBoard] = useState<any[][]>(createBoard());
   const [player, setPlayer] = useState<IPlayer>({
     pos: { x: 0, y: 0 },
@@ -23,9 +19,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
   const pieceSequence = initialPieceSequence ?? [];
   const [currentPieceIndex, setCurrentPieceIndex] = useState(0);
 
-  // ----------------------
-  //   COLLISIONS
-  // ----------------------
   const checkCollision = useCallback(
     (player: IPlayer, board: any[][], move: { x: number; y: number }) => {
       for (let y = 0; y < player.tetromino.length; y++) {
@@ -34,13 +27,10 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
             const newY = y + player.pos.y + move.y;
             const newX = x + player.pos.x + move.x;
 
-            // Hors limite Y
             if (newY < 0 || newY >= board.length) return true;
 
-            // Hors limite X
             if (newX < 0 || newX >= board[0].length) return true;
 
-            // Collision avec une cellule occupée
             if (board[newY][newX] != 0 && board[newY][newX] != null)
               return true;
           }
@@ -51,9 +41,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
     []
   );
 
-  // ----------------------
-  //   RESET / SPAWN
-  // ----------------------
   const resetPlayer = useCallback((boardToCheck: any[][]) => {
     const newTet = (() => {
       if (pieceSequence && pieceSequence.length > 0) {
@@ -66,8 +53,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
       return randomTetromino();
     })();
     
-    // On vérifie sur le plateau qu'on vient de calculer (le plus récent)
-    // et non sur l'état 'board' qui peut être en retard.
     const isFirstRowOccupied = boardToCheck[0].some(
       (cell: any) => cell !== 0 && cell !== null
     );
@@ -85,9 +70,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
     }
   }, [pieceSequence, currentPieceIndex]);
 
-  // ----------------------
-  //   ROTATION
-  // ----------------------
   const rotate = (matrix: number[][]): number[][] =>
     matrix[0].map((_, i) => matrix.map((row) => row[i]).reverse());
 
@@ -112,9 +94,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
     [player, checkCollision]
   );
 
-  // ----------------------
-  //   LIGNES
-  // ----------------------
   const sweepRows = (newBoard: any[][]) => {
     let rowsCleared = 0;
 
@@ -131,9 +110,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
     return cleaned;
   };
 
-  // ----------------------
-  //   LOCK DE PIECE
-  // ----------------------
   const lockPlayerToBoard = (player: IPlayer, board: any[][]) => {
     const newBoard = board.map((row) => [...row]);
 
@@ -158,9 +134,7 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
     resetPlayer(cleanedBoard);
     setDropTime(1000);
   }, [lockPlayerToBoard, resetPlayer, setBoard, setDropTime]);
-  // ----------------------
-  //   DROP
-  // ----------------------
+
   const drop = useCallback(() => {
     if (!checkCollision(player, board, { x: 0, y: 1 })) {
       setPlayer((prev) => ({
@@ -174,7 +148,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
         setDropTime(null);
         return;
       }
-      // Utilisation de la fonction modulaire
       lockAndReset(player, board);
     }
   }, [player, board, checkCollision, lockAndReset, setGameOver, setDropTime]);
@@ -203,10 +176,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
     },
     [player, board, checkCollision]
   );
-
-  // ----------------------
-  //   START GAME
-  // ----------------------
 
   useInterval(() => {
     drop();

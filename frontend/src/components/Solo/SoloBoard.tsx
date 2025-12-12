@@ -1,16 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { useTetris } from '../Game/useTetris'; // Réutilisation du moteur physique
+import { useTetris } from '../Game/useTetris';
 import { COLORS } from '../Game/constants';
-import '../Game/Board.css'; // Réutilisation du style
+import '../Game/Board.css';
 
 function SoloBoard() {
   const navigate = useNavigate();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [gameStarted, setGameStarted] = useState(false);
 
-  // Utilisation du hook sans dépendances réseau
   const {
     player,
     board,
@@ -23,12 +22,10 @@ function SoloBoard() {
     startGame,
   } = useTetris();
 
-  // Focus automatique pour les contrôles clavier
   useEffect(() => {
     wrapperRef.current?.focus();
   }, []);
 
-  // Gestion du Game Over local
   useEffect(() => {
     if (gameOver && gameStarted) {
       toast.error("Game Over!");
@@ -36,7 +33,6 @@ function SoloBoard() {
     }
   }, [gameOver, gameStarted]);
 
-  // Lancement du jeu
   const handleStart = () => {
     setGameStarted(true);
     startGame();
@@ -51,7 +47,7 @@ function SoloBoard() {
     if (!gameStarted || gameOver) return;
 
     const { key } = e;
-    // Empêcher le scroll par défaut avec les flèches
+
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(key)) {
       e.preventDefault();
     }
@@ -67,7 +63,7 @@ function SoloBoard() {
         playerRotate(board, 1);
         break;
       case "ArrowDown":
-        setDropTime(50); // Accélération
+        setDropTime(50);
         drop();
         break;
       case " ":
@@ -80,14 +76,12 @@ function SoloBoard() {
     if (!gameStarted || gameOver) return;
 
     if (e.key === "ArrowDown") {
-      setDropTime(1000); // Retour à la vitesse normale
+      setDropTime(1000);
     }
   };
 
-  // Rendu du plateau
   const boardState = board.map((row, y) =>
     row.map((cell, x) => {
-      // Vérifier si la cellule fait partie de la pièce active du joueur
       const isPlayerCell =
         y >= player.pos.y &&
         y < player.pos.y + player.tetromino.length &&

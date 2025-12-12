@@ -1,4 +1,3 @@
-// tetrominoes.ts
 import { COLORS } from './constants';
 import { ITetromino, TetrominoShape } from './types';
 

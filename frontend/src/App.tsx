@@ -1,4 +1,3 @@
-// App.tsx
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Board from './components/Game/Board';
 import SoloBoard from './components/Solo/SoloBoard';

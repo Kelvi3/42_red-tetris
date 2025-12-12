@@ -1,4 +1,3 @@
-// Board.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -216,7 +215,6 @@ function Board() {
     }
   };
 
-  // 1. Calcule l'état du tableau (un tableau 2D de couleurs)
   const boardState = board.map((row, y) =>
     row.map((cell, x) => {
       const isPlayerCell =
