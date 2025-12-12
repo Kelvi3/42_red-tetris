@@ -34,7 +34,7 @@ const myMiddleware = (types={}) => {
   }
 }
 
-const socketIoMiddleWare = socket => ({dispatch, getState}) => {
+const socketIoMiddleWare = socket => ({dispatch}) => {
   if(socket) socket.on('action', dispatch)
   return next => action => {
     if(socket && action.type && action.type.indexOf('server/') === 0) socket.emit('action', action)

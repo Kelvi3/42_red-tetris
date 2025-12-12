@@ -43,9 +43,8 @@ const initEngine = (io) => {
   io.on('connection', (socket) => {
     loginfo("Socket connected: " + socket.id);
 
-    socket.on('joinRoom', ({ playerName, roomName, action }) => { // action: 'create' | 'join'
+    socket.on('joinRoom', ({ playerName, roomName, action }) => {
       if (!roomName) {
-        // Auto-matchmaking logic (keeps compatibility if needed, though UI enforces input now)
         if (action === 'join') {
              socket.emit('roomError', 'Room name is required to join.');
              return;
@@ -56,7 +55,6 @@ const initEngine = (io) => {
         roomName = waitingRoom || `room${roomCounter++}`;
       }
 
-      // Validation logic
       if (action === 'join' && !games[roomName]) {
         socket.emit('roomError', `Room '${roomName}' does not exist.`);
         return;
@@ -101,7 +99,6 @@ const initEngine = (io) => {
         isYou: false,
       });
 
-      // Send updated player list to everyone in the room
       const playerList = game.players.map(p => ({ name: p.name, isHost: p.isHost }));
       io.to(game.roomName).emit('updatePlayerList', playerList);
     });
@@ -109,12 +106,8 @@ const initEngine = (io) => {
     socket.on('startGame', ({ roomName }) => {
       const game = games[roomName];
       if (game && socket.id) {
-        // Only host can start the game
-        if (game.host && game.host.socket !== socket.id) {
-           return;
-        }
-
-        // Add check for minimum players
+        if (game.host && game.host.socket !== socket.id) return;
+        
         if (game.players.length < 2) {
           socket.emit('roomError', 'Cannot start game with less than 2 players.');
           return;
@@ -231,7 +224,6 @@ const initEngine = (io) => {
             game.removePlayer(player);
             socket.leave(roomName);
             
-            // Notify remaining players about the departure and update list
             socket.to(roomName).emit('playerLeft', { playerName: player.name });
             if (!game.isStarted) {
                 const playerList = game.players.map(p => ({ name: p.name, isHost: p.isHost }));
@@ -277,7 +269,6 @@ const initEngine = (io) => {
             game.removePlayer(player);
             io.to(game.roomName).emit('playerLeft', { playerName: player.name });
             
-            // Update list for those waiting
             const playerList = game.players.map(p => ({ name: p.name, isHost: p.isHost }));
             io.to(game.roomName).emit('updatePlayerList', playerList);
 

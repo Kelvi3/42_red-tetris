@@ -1,8 +1,7 @@
-// Home.tsx
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import './Home.css';
-// import { Link } from 'react-router-dom';
+
 import { toast } from 'react-toastify';
 import { useSocket } from '../../context/SocketContext';
 
@@ -134,11 +133,10 @@ const Home = () => {
       return;
     }
     setWaiting(true);
-    setPlayersList([]); // Reset list on new attempt
+    setPlayersList([]);
     const s = socket || connect();
     socketRef.current = s;
     
-    // Determine action based on current view
     const action = view === 'CREATE_ROOM' ? 'create' : 'join';
     
     s.emit('joinRoom', { playerName: name, roomName: roomNameInput, action });
@@ -189,7 +187,7 @@ const Home = () => {
               onClick={handleStartGame} 
               className="game-button" 
               style={{ marginBottom: 10 }}
-              disabled={playersList.length < 2} // Disable if less than 2 players
+              disabled={playersList.length < 2}
             >
               Start Game
             </button>
@@ -200,7 +198,6 @@ const Home = () => {
         </>
        )
     }
-
 
     switch (view) {
       case 'MAIN':

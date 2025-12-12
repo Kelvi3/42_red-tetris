@@ -1,6 +1,5 @@
 import { combineReducers } from 'redux';
 
-// Exemple d'un reducer "alert"
 const alertReducer = (state = null, action) => {
   switch (action.type) {
     case 'ALERT_SUCCESS':
@@ -14,7 +13,6 @@ const alertReducer = (state = null, action) => {
   }
 };
 
-// Exemple d'un reducer "socket"
 const socketReducer = (state = null, action) => {
   switch (action.type) {
     case 'SOCKET_CONNECT':
@@ -26,7 +24,6 @@ const socketReducer = (state = null, action) => {
   }
 };
 
-// Combine tous les reducers
 const rootReducer = combineReducers({
   alert: alertReducer,
   socket: socketReducer,

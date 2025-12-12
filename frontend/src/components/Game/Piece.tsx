@@ -1,10 +1,8 @@
-// types.ts
 type Piece = {
   shape: number[][];
   color: string;
 };
 
-// pieces.ts
 export const PIECES: { [key: string]: Piece } = {
   I: {
     shape: [
