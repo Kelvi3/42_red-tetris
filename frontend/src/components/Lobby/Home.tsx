@@ -107,7 +107,6 @@ const Home = () => {
         s.off('roomError', onRoomError);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, navigate, socket]);
 
   const handlePlaySolo = () => {

@@ -112,7 +112,7 @@ function SoloBoard() {
             {gameStarted || gameOver ? 'Recommencer' : 'Start Game'}
           </button>
           <button className="game-button" onClick={handleQuit}>
-            Quitter
+            Back
           </button>
         </div>
       </div>
