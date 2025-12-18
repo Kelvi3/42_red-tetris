@@ -1,7 +1,7 @@
-import chai from 'chai'
-import Player from '../src/server/player'
+const chai = require('chai');
+const Player = require('../src/server/player');
 
-chai.should()
+chai.should();
 
 describe('Player Logic', function(){
   it('should compute spectrum heights from board correctly', function(){

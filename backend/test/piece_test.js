@@ -1,7 +1,7 @@
-import chai from "chai"
-import Piece from "../src/server/piece"
+const chai = require('chai');
+const Piece = require('../src/server/piece');
 
-chai.should()
+chai.should();
 
 describe('Piece Logic', function(){
   it('should instantiate all pieces', function(){

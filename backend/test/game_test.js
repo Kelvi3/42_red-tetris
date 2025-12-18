@@ -1,9 +1,9 @@
-import chai from 'chai'
-import Game from '../src/server/game'
-import Player from '../src/server/player'
-import Piece from '../src/server/piece'
+const chai = require('chai');
+const Game = require('../src/server/game');
+const Player = require('../src/server/player');
+const Piece = require('../src/server/piece');
 
-chai.should()
+chai.should();
 
 describe('Game Logic', function(){
   it('should add and remove players and transfer host when needed', function(){
