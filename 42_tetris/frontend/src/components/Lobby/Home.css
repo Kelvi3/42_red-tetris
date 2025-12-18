@@ -1,0 +1,22 @@
+/* Home.css */
+.home-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.name-input {
+  width: 300px;
+  padding: 10px;
+  margin-bottom: 20px;
+}
+
+.button-container {
+  display: flex;
+  gap: 20px;
+}
+
+.game-button {
+  width: 150px;
+  height: 50px;
+}
