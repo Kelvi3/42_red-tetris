@@ -118,7 +118,6 @@ function Board() {
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
         if (socket && roomName) {
           try {
-            console.log('[Board] beforeunload: emit leaveRoom', { roomName, socketId: socket.id });
             socket.emit('leaveRoom', { roomName });
           } catch (err) {
             console.error('[Board] beforeunload: emit failed', err);
@@ -132,7 +131,6 @@ function Board() {
         window.removeEventListener('beforeunload', handleBeforeUnload);
         if (roomName) {
           leaveRoom(roomName).then((res) => {
-            console.log('[Board] leaveRoom result on unmount', res);
           });
         }
       };
@@ -141,7 +139,6 @@ function Board() {
     useEffect(() => {
       if (isSolo) return;
       const onPlayerLeft = (data: any) => {
-        console.log('[Board] received playerLeft', data);
         const leftName = data?.playerName || 'Opponent';
         toast.info(`${leftName} a quitté la partie`);
         setDropTime(null);

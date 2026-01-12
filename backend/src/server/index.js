@@ -8,7 +8,7 @@ const express = require('express');
 const logerror = debug('tetris:error')
   , loginfo = debug('tetris:info')
 
-const initApp = (app, params, cb) => {
+const initApp = (params, cb) => {
   const { host, port } = params;
 
   const expressApp = express();
@@ -28,11 +28,15 @@ const initApp = (app, params, cb) => {
     });
   };
 
-  app.on('request', handler);
+  expressApp.use((req, res) => {
+    handler(req, res);
+  });
 
-  app.listen({ host, port }, () => {
+  const server = require('http').createServer(expressApp);
+
+  server.listen(port, host, () => {
     loginfo(`tetris listen on ${params.url}`);
-    cb();
+    cb(server);
   });
 };
 
@@ -203,7 +207,6 @@ const initEngine = (io) => {
         if (player) {
           player.isAlive = false;
           game.removePlayer(player);
-          console.log(`[server] playerLost: socket=${socket.id} player=${playerName} room=${roomName}`);
           socket.to(roomName).emit('youWin', { winnerName: playerName });
           if (game.players.length === 0) delete games[roomName];
           if (typeof cb === 'function') cb({ ok: true });
@@ -220,7 +223,6 @@ const initEngine = (io) => {
       if (game) {
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
-            console.log(`[server] leaveRoom: socket=${socket.id} player=${player.name} room=${roomName}`);
             game.removePlayer(player);
             socket.leave(roomName);
             
@@ -232,7 +234,6 @@ const initEngine = (io) => {
 
             if (game.players.length === 1) {
               const remaining = game.players[0];
-              console.log(`[server] leaveRoom: notifying remaining socket=${remaining.socket} they are alone`);
               io.to(remaining.socket).emit('alone', { playerCount: 1 });
             }
             if (game.players.length === 0) delete games[roomName];
@@ -248,7 +249,6 @@ const initEngine = (io) => {
         const game = games[roomName];
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
-          console.log(`[server] disconnect: socket=${socket.id} player=${player.name} room=${roomName} isStarted=${game.isStarted}`);
           const otherPlayers = game.players.filter((p) => p.socket !== socket.id);
 
           if (game.isStarted) {
@@ -274,7 +274,6 @@ const initEngine = (io) => {
 
             if (game.players.length === 1) {
               const remaining = game.players[0];
-              console.log(`[server] disconnect: notifying remaining socket=${remaining.socket} they are alone`);
               io.to(remaining.socket).emit('alone', { playerCount: 1 });
             }
             if (game.players.length === 0) delete games[roomName];
@@ -288,22 +287,25 @@ const initEngine = (io) => {
 
 export function create(params) {
   const promise = new Promise((resolve) => {
-    const app = require('http').createServer();
-    initApp(app, params, () => {
-      const io = require('socket.io')(app, {
+    initApp(params, (server) => {
+      const io = require('socket.io')(server, {
         cors: {
           origin: '*',
           methods: ['GET', 'POST'],
         },
       });
 
+      const { socketLogger, socketJwtAuth } = require('./middleware');
+      io.use(socketLogger);
+      io.use(socketJwtAuth);
+
       const stop = (cb) => {
         io.close();
-        app.close(() => {
-          app.unref();
+        server.close(() => {
+          server.unref();
+          loginfo(`Engine stopped.`);
+          cb();
         });
-        loginfo(`Engine stopped.`);
-        cb();
       };
 
       initEngine(io);

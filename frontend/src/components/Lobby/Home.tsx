@@ -65,10 +65,6 @@ const Home = () => {
       if (currentPlayer) setPlayerInfo((prev) => ({ ...prev, playerName: currentPlayer.name }));
     };
 
-    const onUpdatePiece = (data: any) => {
-      console.log('Piece updated:', data);
-    };
-
     const onPlayerLeft = (payload: any) => {
       if (payload && payload.playerName)
         toast(`${payload.playerName} left`);
@@ -85,14 +81,12 @@ const Home = () => {
       s.off('playerJoined', onPlayerJoined);
       s.off('updatePlayerList', onUpdatePlayerList);
       s.off('gameStarted', onGameStarted);
-      s.off('updatePiece', onUpdatePiece);
       s.off('playerLeft', onPlayerLeft);
       s.off('roomError', onRoomError);
 
       s.on('playerJoined', onPlayerJoined);
       s.on('updatePlayerList', onUpdatePlayerList);
       s.on('gameStarted', onGameStarted);
-      s.on('updatePiece', onUpdatePiece);
       s.on('playerLeft', onPlayerLeft);
       s.on('roomError', onRoomError);
     }
@@ -102,7 +96,6 @@ const Home = () => {
         s.off('playerJoined', onPlayerJoined);
         s.off('updatePlayerList', onUpdatePlayerList);
         s.off('gameStarted', onGameStarted);
-        s.off('updatePiece', onUpdatePiece);
         s.off('playerLeft', onPlayerLeft);
         s.off('roomError', onRoomError);
       }

@@ -117,8 +117,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
       row.forEach((value, x) => {
         if (value !== 0) {
           newBoard[player.pos.y + y][player.pos.x + x] = player.color;
-        } else {
-          console.log([player.pos.y + y][player.pos.x + x]);
         }
       });
     });
@@ -167,7 +165,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
   const movePlayer = useCallback(
     (dir: number) => {
       if (!checkCollision(player, board, { x: dir, y: 0 })) {
-        console.log('samer');
         setPlayer((prev) => ({
           ...prev,
           pos: { x: prev.pos.x + dir, y: prev.pos.y },
