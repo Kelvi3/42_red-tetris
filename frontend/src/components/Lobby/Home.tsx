@@ -32,6 +32,15 @@ const Home = () => {
   const [playerInfo, setPlayerInfo] = useState<playerInfoType>({});
   const [waiting, setWaiting] = useState(false);
 
+  // Clean up previous room if returning to lobby
+  useEffect(() => {
+    if (playerInfo.roomName) {
+      leaveRoom(playerInfo.roomName).then(() => {
+         setPlayerInfo({});
+      });
+    }
+  }, []);
+
   useEffect(() => {
     const s = socket;
     socketRef.current = s;

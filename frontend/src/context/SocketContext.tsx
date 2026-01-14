@@ -28,7 +28,6 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try {
         socket.disconnect();
       } catch (e) {
-        // ignore
       }
       setSocket(null);
     }

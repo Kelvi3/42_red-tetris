@@ -4,7 +4,17 @@ import { toast } from 'react-toastify';
 import { useTetris } from './useTetris';
 import { COLORS } from './constants';
 import './Board.css';
+import './OpponentBoard.css';
 import { useSocket } from '../../context/SocketContext';
+import BoardDisplay from './BoardDisplay';
+
+interface Opponent {
+  name: string;
+  state: {
+    board: any[][];
+    player: any;
+  };
+}
 
 function Board() {
   const location = useLocation();
@@ -18,6 +28,7 @@ function Board() {
   const isSolo = roomName === 'solo';
 
   const [validated, setValidated] = useState<boolean | null>(startGameState || isSolo ? true : null);
+  const [opponents, setOpponents] = useState<Record<string, Opponent>>({});
 
   useEffect(() => {
     if (startGameState || isSolo) return;
@@ -60,6 +71,34 @@ function Board() {
     startGame,
   } = useTetris(pieceSequence);
 
+  // Broadcast local state
+  useEffect(() => {
+    if (isSolo || !socket || !roomName) return;
+    // Broadcast whenever board or player changes (move, rotate, drop)
+    socket.emit('updatePlayerState', {
+      roomName,
+      state: { board, player }
+    });
+  }, [board, player, isSolo, socket, roomName]);
+
+  // Listen for opponents
+  useEffect(() => {
+    if (isSolo || !socket) return;
+
+    const onOpponentUpdate = (data: { socketId: string, name: string, state: any }) => {
+      setOpponents((prev) => ({
+        ...prev,
+        [data.socketId]: { name: data.name, state: data.state }
+      }));
+    };
+
+    socket.on('opponentStateUpdate', onOpponentUpdate);
+
+    return () => {
+      socket.off('opponentStateUpdate', onOpponentUpdate);
+    };
+  }, [socket, isSolo]);
+
   if (validated === null) {
     return (
       <div style={{ padding: 20 }}>
@@ -78,7 +117,6 @@ function Board() {
   useEffect(() => {
     if (isSolo) return;
     if (!socket || !socket.id) {
-
       navigate('/');
     }
   }, [socket, navigate, isSolo]);
@@ -130,11 +168,8 @@ function Board() {
 
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
-        if (roomName) {
-          leaveRoom(roomName).then((res) => {
-            console.log('[Board] leaveRoom result on unmount', res);
-          });
-        }
+        // Removed leaveRoom on unmount to prevent issue with React Strict Mode double-invocation
+        // failing the game immediately. Rely on explicit Back button or beforeunload.
       };
     }, [socket, roomName, leaveRoom, isSolo]);
 
@@ -144,12 +179,13 @@ function Board() {
         console.log('[Board] received playerLeft', data);
         const leftName = data?.playerName || 'Opponent';
         toast.info(`${leftName} a quitté la partie`);
-        setDropTime(null);
-        setEnded(true);
-        setTimeout(() => {
-          try { disconnect(); } catch (err) {}
-          navigate('/');
-        }, 500);
+        
+        setOpponents(prev => {
+          const next = { ...prev };
+          const key = Object.keys(next).find(k => next[k].name === leftName);
+          if (key) delete next[key];
+          return next;
+        });
       };
 
       if (socket) socket.on('playerLeft', onPlayerLeft);
@@ -181,27 +217,33 @@ function Board() {
     if (gameOver || ended) return;
 
     const { key } = e;
-    e.preventDefault();
+    // e.preventDefault(); // Prevent default only if it's a game key
+    // Actually, Board usually focuses.
 
     switch (key) {
       case "ArrowLeft":
+        e.preventDefault();
         movePlayer(-1);
         break;
 
       case "ArrowRight":
+        e.preventDefault();
         movePlayer(1);
         break;
 
       case "ArrowUp":
+        e.preventDefault();
         playerRotate(board, 1);
         break;
 
       case "ArrowDown":
+        e.preventDefault();
         setDropTime(50);
         drop();
         break;
 
       case " ":
+        e.preventDefault();
         hardDrop();
         break;
     }
@@ -215,75 +257,67 @@ function Board() {
     }
   };
 
-  const boardState = board.map((row, y) =>
-    row.map((cell, x) => {
-      const isPlayerCell =
-        y >= player.pos.y &&
-        y < player.pos.y + player.tetromino.length &&
-        x >= player.pos.x &&
-        x < player.pos.x + player.tetromino[0].length &&
-        player.tetromino[y - player.pos.y][x - player.pos.x] !== 0;
-      return isPlayerCell ? player.color : cell;
-    })
-  );
-
   return (
-    <div
-      className="game-wrapper"
-      role="button"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      onKeyUp={handleKeyUp}
-      ref={wrapperRef}
-      onMouseEnter={() => wrapperRef.current?.focus()}
-      style={{ outline: "none" }}
-    >
-      <button className="game-button" onClick={() => {
-        if (roomName && !isSolo) {
-          const s = socket || connect();
-          s.emit('playerLost', { roomName, playerName: name }, (res: any) => {
-            try { disconnect(); } catch (e) {}
-            navigate('/');
-          });
-        } else {
-          navigate('/');
-        }
-      }}>Retour</button>      
-        <div className="header">
-          <h1>{name}</h1>
-          {gameOver && <h2 style={{ color: 'red' }}>GAME OVER</h2>}
-          {isSolo && (
-            <button onClick={startGame} className="game-button">
-              {gameOver ? 'Recommencer' : 'Start Game'}
-            </button>
-          )}
-        </div>
-
-
-      <div className="board">
-        {boardState.map((row, rowIndex) => (
-          <div key={rowIndex} className="row">
-            {row.map((cellColor, colIndex) => (
-              <div
-                key={colIndex}
-                className="cell"
-                style={{
-                  backgroundColor: cellColor || COLORS.EMPTY,
-                  border: cellColor
-                    ? '1px solid rgba(0,0,0,0.1)'
-                    : '1px solid #333',
-                }}
+    <div className="game-container">
+      {/* Opponents Sidebar */}
+      {!isSolo && opponents  && Object.keys(opponents).length > 0 && (
+        <div className="opponents-sidebar">
+          {Object.entries(opponents).map(([id, opp]) => (
+            <div key={id} className="opponent-card">
+              <h3>{opp.name}</h3>
+              <BoardDisplay 
+                board={opp.state.board} 
+                player={opp.state.player} 
+                cellSize={10} // Smaller cells for opponents
               />
-            ))}
-          </div>
-        ))}
-      </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      <div className="controls-info">
-        <p>← → : Bouger</p>
-        <p>↑ : Rotation</p>
-        <p>↓ : Descendre vite</p>
-        <p>Espace : Chute instantanée</p>
+      {/* Main Game Area */}
+      <div className="main-area">
+        <div
+          className="game-wrapper"
+          role="button"
+          tabIndex={0}
+          onKeyDown={handleKeyDown}
+          onKeyUp={handleKeyUp}
+          ref={wrapperRef}
+          onMouseEnter={() => wrapperRef.current?.focus()}
+          style={{ outline: "none" }}
+        >
+          <button className="game-button" onClick={() => {
+            if (roomName && !isSolo) {
+              const s = socket || connect();
+              s.emit('playerLost', { roomName, playerName: name }, (res: any) => {
+                try { disconnect(); } catch (e) {}
+                navigate('/');
+              });
+            } else {
+              navigate('/');
+            }
+          }}>Retour</button>      
+          
+          <div className="header">
+            <h1>{name}</h1>
+            {gameOver && <h2 style={{ color: 'red' }}>GAME OVER</h2>}
+            {isSolo && (
+              <button onClick={startGame} className="game-button">
+                {gameOver ? 'Recommencer' : 'Start Game'}
+              </button>
+            )}
+          </div>
+
+          <BoardDisplay board={board} player={player} />
+
+          <div className="controls-info">
+            <p>← → : Bouger</p>
+            <p>↑ : Rotation</p>
+            <p>↓ : Descendre vite</p>
+            <p>Espace : Chute instantanée</p>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,47 @@
+/* Opponent Board Styles */
+.opponents-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 200px;
+  padding: 15px; /* 15px on all sides */
+  border-right: 10px solid #333; /* Even thicker separator line */
+  margin: 0;
+  align-self: stretch; /* Take full height of the parent (game-container) */
+  box-sizing: border-box;
+}
+
+.opponent-card {
+  background: transparent; /* No background */
+  padding: 10px;
+  border: 4px solid #fff2; /* Thick border */
+  border-radius: 0; /* No radius */
+  text-align: center;
+}
+
+.opponent-card h3 {
+  font-size: 14px;
+  margin: 0 0 10px 0;
+  color: #fff;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+@media (max-width: 768px) {
+  .opponents-sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    
+    border-right: none;
+    padding: 15px;
+    margin-right: 0;
+    border-top: 10px solid #333;
+    align-self: auto;
+  }
+
+  .opponent-card {
+    transform: scale(0.8);
+  }
+}

@@ -196,6 +196,21 @@ const initEngine = (io) => {
       }
     });
 
+    socket.on('updatePlayerState', ({ roomName, state }) => {
+      const game = games[roomName];
+      if (game) {
+        const player = game.players.find((p) => p.socket === socket.id);
+        if (player) {
+           // We could update server-side state here if needed
+           socket.to(roomName).emit('opponentStateUpdate', {
+             socketId: socket.id,
+             name: player.name,
+             state
+           });
+        }
+      }
+    });
+
     socket.on('playerLost', ({ roomName, playerName }, cb) => {
       const game = games[roomName];
       if (game) {

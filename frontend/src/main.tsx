@@ -1,14 +1,25 @@
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import './index.css';
-import App from './App';
 import { Provider } from 'react-redux';
-import store from './store';
 import { SocketProvider } from './context/SocketContext';
+import store from './store';
+import App from './App';
+import './index.css';
 
-createRoot(document.getElementById('root')!).render(
-  <SocketProvider>
-    <Provider store={store}>
-      <App />
-    </Provider>
-  </SocketProvider>
+const container = document.getElementById('root');
+
+if (!container) {
+  throw new Error("L'élément root est introuvable dans le DOM.");
+}
+
+const root = createRoot(container);
+
+root.render(
+  <StrictMode>
+    <SocketProvider>
+      <Provider store={store}>
+        <App />
+      </Provider>
+    </SocketProvider>
+  </StrictMode>
 );

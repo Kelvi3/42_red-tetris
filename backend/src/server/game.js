@@ -16,7 +16,7 @@ class Game {
     this.players.push(player);
     if (!this.host) {
       this.host = player;
-      this.socketId == player.socket;
+      this.socketId = player.socket;
       player.isHost = true;
     }
   }
