@@ -59,6 +59,16 @@ function Board() {
   const [gameStarted, setGameStarted] = useState(false);
   const [ended, setEnded] = useState(false);
 
+  const onRowsCleared = React.useCallback((rows: number) => {
+    if (isSolo || !socket || !roomName) return;
+    const penalty = rows;
+    console.log(`[Board] emitting linesCleared: ${rows} (penalty: ${penalty})`);
+    if (penalty > 0) {
+      // toast.info(`Attack! Sending ${penalty} lines.`);
+    }
+    socket.emit('linesCleared', { roomName, rowsCleared: rows });
+  }, [isSolo, socket, roomName]);
+
   const {
     player,
     board,
@@ -69,7 +79,29 @@ function Board() {
     playerRotate,
     setDropTime,
     startGame,
-  } = useTetris(pieceSequence);
+    addPenaltyLines
+  } = useTetris(pieceSequence, onRowsCleared);
+
+  // Listen for penalty lines
+  useEffect(() => {
+    if (isSolo || !socket) return;
+    
+    const onPenalty = (data: { sender: string, senderId?: string, lines: number }) => {
+        if (data.senderId && data.senderId === socket.id) {
+            console.log(`[Board] ignoring self-penalty from ${data.sender}`);
+            return;
+        }
+
+        console.log(`[Board] received penaltyLines from ${data.sender}: ${data.lines}`);
+        toast.warning(`Attack from ${data.sender}: ${data.lines} lines!`);
+        addPenaltyLines(data.lines);
+    };
+    
+    socket.on('penaltyLines', onPenalty);
+    return () => {
+        socket.off('penaltyLines', onPenalty);
+    };
+  }, [socket, isSolo, addPenaltyLines]);
 
   // Broadcast local state
   useEffect(() => {
@@ -168,8 +200,7 @@ function Board() {
 
       return () => {
         window.removeEventListener('beforeunload', handleBeforeUnload);
-        // Removed leaveRoom on unmount to prevent issue with React Strict Mode double-invocation
-        // failing the game immediately. Rely on explicit Back button or beforeunload.
+
       };
     }, [socket, roomName, leaveRoom, isSolo]);
 

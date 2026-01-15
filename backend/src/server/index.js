@@ -196,6 +196,31 @@ const initEngine = (io) => {
       }
     });
 
+    socket.on('linesCleared', ({ roomName, rowsCleared }) => {
+      const game = games[roomName];
+      // console.log(`[server] linesCleared: room=${roomName} rows=${rowsCleared}`);
+      if (game) {
+        const player = game.players.find((p) => p.socket === socket.id);
+        if (player) {
+          // Changed rule per user feedback: "normalement c'est a chaque fois que on fait une ligne"
+          // Originally was n-1, but that results in 0 penalty for 1 line.
+          // Now calculating penalty = rowsCleared.
+          const penalty = rowsCleared; 
+          // console.log(`[server] penalty calc: ${rowsCleared} = ${penalty}`);
+          if (penalty > 0) {
+            console.log(`[server] emitting penaltyLines to room ${roomName} from ${player.name}: ${penalty} lines`);
+            socket.to(roomName).emit('penaltyLines', {
+              sender: player.name,
+              senderId: socket.id,
+              lines: penalty
+            });
+          } else {
+            console.log(`[server] penalty <= 0 (${penalty}), not emitting.`);
+          }
+        }
+      }
+    });
+
     socket.on('updatePlayerState', ({ roomName, state }) => {
       const game = games[roomName];
       if (game) {

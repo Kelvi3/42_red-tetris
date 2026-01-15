@@ -5,7 +5,7 @@ import { createBoard } from './gameHelper';
 import { IPlayer } from './types';
 import { useInterval } from './useInterval';
 
-export const useTetris = (initialPieceSequence?: string[] | null) => {
+export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?: (n: number) => void) => {
   const [board, setBoard] = useState<any[][]>(createBoard());
   const [player, setPlayer] = useState<IPlayer>({
     pos: { x: 0, y: 0 },
@@ -98,7 +98,8 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
     let rowsCleared = 0;
 
     const cleaned = newBoard.reduce((acc: any[][], row: any[]) => {
-      if (row.every((cell) => cell !== 0 && cell !== null)) {
+      const isPenalty = row.every(cell => cell === '#808080');
+      if (row.every((cell) => cell !== 0 && cell !== null) && !isPenalty) {
         rowsCleared++;
         acc.unshift(new Array(row.length).fill(0));
       } else {
@@ -106,6 +107,11 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
       }
       return acc;
     }, []);
+
+    if (rowsCleared > 0 && onRowsCleared) {
+      console.log(`[useTetris] sweepRows: cleared ${rowsCleared} lines`);
+      onRowsCleared(rowsCleared);
+    }
 
     return cleaned;
   };
@@ -118,7 +124,7 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
         if (value !== 0) {
           newBoard[player.pos.y + y][player.pos.x + x] = player.color;
         } else {
-          console.log([player.pos.y + y][player.pos.x + x]);
+          // console.log([player.pos.y + y][player.pos.x + x]);
         }
       });
     });
@@ -167,7 +173,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
   const movePlayer = useCallback(
     (dir: number) => {
       if (!checkCollision(player, board, { x: dir, y: 0 })) {
-        console.log('samer');
         setPlayer((prev) => ({
           ...prev,
           pos: { x: prev.pos.x + dir, y: prev.pos.y },
@@ -176,6 +181,36 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
     },
     [player, board, checkCollision]
   );
+
+  const addPenaltyLines = useCallback((n: number) => {
+    console.log(`[useTetris] addPenaltyLines: adding ${n} lines`);
+    setBoard(prev => {
+       const newBoard = prev.map(row => [...row]);
+       const width = newBoard[0].length;
+       const height = newBoard.length;
+
+       // Count existing penalty rows at bottom
+       let existingPenalty = 0;
+       for (let i = height - 1; i >= 0; i--) {
+         const row = newBoard[i];
+         if (row.every(cell => cell === '#808080')) existingPenalty++;
+         else break;
+       }
+
+       // Add new penalty rows above existing penalty rows, stacking them
+       for (let i = 0; i < n; i++) {
+         const rowIndex = height - 1 - existingPenalty - i;
+         if (rowIndex >= 0) {
+           newBoard[rowIndex] = new Array(width).fill('#808080');
+         } else {
+           // no more space above: overwrite top row (will be handled as game over elsewhere)
+           newBoard[0] = new Array(width).fill('#808080');
+         }
+       }
+
+       return newBoard;
+    });
+  }, []);
 
   useInterval(() => {
     drop();
@@ -199,5 +234,6 @@ export const useTetris = (initialPieceSequence?: string[] | null) => {
     playerRotate,
     setDropTime,
     startGame,
+    addPenaltyLines
   };
 };
