@@ -62,7 +62,6 @@ function Board() {
   const onRowsCleared = React.useCallback((rows: number) => {
     if (isSolo || !socket || !roomName) return;
     const penalty = rows;
-    console.log(`[Board] emitting linesCleared: ${rows} (penalty: ${penalty})`);
     if (penalty > 0) {
       // toast.info(`Attack! Sending ${penalty} lines.`);
     }
@@ -87,12 +86,9 @@ function Board() {
     if (isSolo || !socket) return;
     
     const onPenalty = (data: { sender: string, senderId?: string, lines: number }) => {
-        if (data.senderId && data.senderId === socket.id) {
-            console.log(`[Board] ignoring self-penalty from ${data.sender}`);
-            return;
-        }
+        if (data.senderId && data.senderId === socket.id) return;
 
-        console.log(`[Board] received penaltyLines from ${data.sender}: ${data.lines}`);
+
         toast.warning(`Attack from ${data.sender}: ${data.lines} lines!`);
         addPenaltyLines(data.lines);
     };
@@ -158,28 +154,40 @@ function Board() {
       if (isSolo) return;
       const s = socket || connect();
       s.emit('playerLost', { roomName, playerName: name }, (res: any) => {
-        try { disconnect(); } catch (e) {}
-        navigate('/');
+        if (res && res.ok) {
+          toast.info('You are eliminated. Returning to lobby...');
+          setEnded(true);
+
+          setTimeout(() => {
+            leaveRoom(roomName).then(() => {
+              navigate('/');
+            }).catch(() => {
+              navigate('/');
+            });
+          }, 1500);
+        }
       });
     }
-  }, [gameOver, socket, connect, disconnect, navigate, roomName, name, isSolo])
+  }, [gameOver, socket, connect, roomName, name, isSolo, leaveRoom, navigate]);
 
     useEffect(() => {
       if (isSolo) return;
       const handler = (data: any) => {
-        toast('You won!');
+        toast.success(`Game finished! Winner: ${data.winnerName}`);
         setDropTime(null);
         setEnded(true);
 
-        leaveRoom(roomName).then(() => {
-          navigate('/');
-        });
+        setTimeout(() => {
+          leaveRoom(roomName).then(() => {
+            navigate('/');
+          });
+        }, 2000);
       };
 
-      if (socket) socket.on('youWin', handler);
+      if (socket) socket.on('gameFinished', handler);
 
       return () => {
-        if (socket) socket.off('youWin', handler);
+        if (socket) socket.off('gameFinished', handler);
       };
     }, [socket, navigate, setDropTime, leaveRoom, roomName, isSolo]);
 
@@ -188,10 +196,9 @@ function Board() {
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
         if (socket && roomName) {
           try {
-            console.log('[Board] beforeunload: emit leaveRoom', { roomName, socketId: socket.id });
             socket.emit('leaveRoom', { roomName });
           } catch (err) {
-            console.error('[Board] beforeunload: emit failed', err);
+            // err;
           }
         }
       };
@@ -206,8 +213,20 @@ function Board() {
 
     useEffect(() => {
       if (isSolo) return;
+      const onPlayerEliminated = (data: any) => {
+        const elimName = data?.playerName || 'Opponent';
+        toast.warning(`${elimName} is eliminated!`);
+      };
+
+      if (socket) socket.on('playerEliminated', onPlayerEliminated);
+      return () => {
+        if (socket) socket.off('playerEliminated', onPlayerEliminated);
+      };
+    }, [socket, isSolo]);
+
+    useEffect(() => {
+      if (isSolo) return;
       const onPlayerLeft = (data: any) => {
-        console.log('[Board] received playerLeft', data);
         const leftName = data?.playerName || 'Opponent';
         toast.info(`${leftName} a quitté la partie`);
         
@@ -248,8 +267,6 @@ function Board() {
     if (gameOver || ended) return;
 
     const { key } = e;
-    // e.preventDefault(); // Prevent default only if it's a game key
-    // Actually, Board usually focuses.
 
     switch (key) {
       case "ArrowLeft":
@@ -319,20 +336,17 @@ function Board() {
           style={{ outline: "none" }}
         >
           <button className="game-button" onClick={() => {
-            if (roomName && !isSolo) {
-              const s = socket || connect();
-              s.emit('playerLost', { roomName, playerName: name }, (res: any) => {
-                try { disconnect(); } catch (e) {}
-                navigate('/');
-              });
-            } else {
+            leaveRoom(roomName).then(() => {
               navigate('/');
-            }
+            }).catch(() => {
+              navigate('/');
+            });
           }}>Retour</button>      
           
           <div className="header">
             <h1>{name}</h1>
-            {gameOver && <h2 style={{ color: 'red' }}>GAME OVER</h2>}
+            {gameOver && ended && <h2 style={{ color: 'red' }}>GAME OVER</h2>}
+            {gameOver && ended && <p style={{ color: '#aaa', fontSize: '14px' }}>You are eliminated. Watching others play...</p>}
             {isSolo && (
               <button onClick={startGame} className="game-button">
                 {gameOver ? 'Recommencer' : 'Start Game'}
@@ -340,14 +354,40 @@ function Board() {
             )}
           </div>
 
-          <BoardDisplay board={board} player={player} />
+          {gameOver && ended ? (
+            <div style={{ width: '100%' }}>
+              {!isSolo && opponents && Object.keys(opponents).length > 0 ? (
+                <div style={{ marginTop: '20px', textAlign: 'center' }}>
+                  <h3 style={{ color: '#fff', marginBottom: '15px' }}>Remaining players:</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                    {Object.entries(opponents).map(([id, opp]) => (
+                      <div key={id} style={{ border: '2px solid #fff2', padding: '10px' }}>
+                        <h4 style={{ color: '#fff', marginBottom: '10px' }}>{opp.name}</h4>
+                        <BoardDisplay 
+                          board={opp.state.board} 
+                          player={opp.state.player} 
+                          cellSize={15}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p style={{ color: '#aaa', marginTop: '20px' }}>Waiting for game to finish...</p>
+              )}
+            </div>
+          ) : (
+            <BoardDisplay board={board} player={player} />
+          )}
 
-          <div className="controls-info">
-            <p>← → : Bouger</p>
-            <p>↑ : Rotation</p>
-            <p>↓ : Descendre vite</p>
-            <p>Espace : Chute instantanée</p>
-          </div>
+          {!gameOver && (
+            <div className="controls-info">
+              <p>← → : Bouger</p>
+              <p>↑ : Rotation</p>
+              <p>↓ : Descendre vite</p>
+              <p>Espace : Chute instantanée</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
