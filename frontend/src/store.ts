@@ -5,6 +5,7 @@ import { thunk } from 'redux-thunk';
 import { createLogger } from 'redux-logger';
 import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
 import type { Dispatch } from 'redux';
+import { storeStateMiddleWare } from '../middlewares/storeStateMiddleWare'
 
 const initialState = {};
 
@@ -17,7 +18,7 @@ const logger = createLogger({
 const store = createStore(
   reducer,
   initialState,
-  applyMiddleware(thunk, logger)
+  applyMiddleware(storeStateMiddleWare, thunk, logger)
 );
 
 export type RootState = ReturnType<typeof reducer>;

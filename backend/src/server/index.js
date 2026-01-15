@@ -1,12 +1,7 @@
-import fs  from 'fs'
-import debug from 'debug'
 const Game = require('./game');
 const Player = require('./player');
 const cors = require('cors');
 const express = require('express');
-
-const logerror = debug('tetris:error')
-  , loginfo = debug('tetris:info')
 
 const initApp = (app, params, cb) => {
   const { host, port } = params;
@@ -15,23 +10,7 @@ const initApp = (app, params, cb) => {
   expressApp.use(cors());
   expressApp.use(express.static('public'));
 
-  const handler = (req, res) => {
-    const file = req.url === '/bundle.js' ? '/../../build/bundle.js' : '/../../index.html';
-    fs.readFile(__dirname + file, (err, data) => {
-      if (err) {
-        logerror(err);
-        res.writeHead(500);
-        return res.end('Error loading index.html');
-      }
-      res.writeHead(200);
-      res.end(data);
-    });
-  };
-
-  app.on('request', handler);
-
   app.listen({ host, port }, () => {
-    loginfo(`tetris listen on ${params.url}`);
     cb();
   });
 };
@@ -41,7 +20,6 @@ const initEngine = (io) => {
   let roomCounter = 0;
 
   io.on('connection', (socket) => {
-    loginfo("Socket connected: " + socket.id);
 
     socket.on('joinRoom', ({ playerName, roomName, action }) => {
       if (!roomName) {
@@ -342,7 +320,6 @@ export function create(params) {
         app.close(() => {
           app.unref();
         });
-        loginfo(`Engine stopped.`);
         cb();
       };
 
