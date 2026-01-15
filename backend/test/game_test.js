@@ -87,4 +87,59 @@ describe('Game Logic', function(){
     p2.isAlive = true;
     game.checkGameOver().should.equal(false);
   });
+
+  it('should update spectrums for all players', function(){
+    const game = new Game('room5');
+    const p1 = new Player('p1', 's1');
+    const p2 = new Player('p2', 's2');
+    game.addPlayer(p1);
+    game.addPlayer(p2);
+
+    p1.board[10][0] = 1;
+    p2.board[5][3] = 1;
+
+    game.updateSpectrums();
+
+    p1.spectrum[0].should.equal(10);
+    p2.spectrum[3].should.equal(15);
+  });
+
+  it('should properly assign host on creation', function(){
+    const game = new Game('room6');
+    const p1 = new Player('first', 's1');
+    
+    (game.host === null).should.equal(true);
+    game.addPlayer(p1);
+    game.host.should.equal(p1);
+    game.host.isHost.should.equal(true);
+  });
+
+  it('should handle multiple player additions and removals', function(){
+    const game = new Game('room7');
+    const players = [
+      new Player('p1', 's1'),
+      new Player('p2', 's2'),
+      new Player('p3', 's3'),
+    ];
+
+    players.forEach(p => game.addPlayer(p));
+    game.players.length.should.equal(3);
+
+    game.removePlayer(players[1]);
+    game.players.length.should.equal(2);
+    game.players.should.not.include(players[1]);
+    game.host.should.equal(players[0]);
+  });
+
+  it('should extend pieceSequence when needed', function(){
+    const game = new Game('room8');
+    game.pieceSequence = game.generatePieceSequence(2);
+    const initialLength = game.pieceSequence.length;
+    
+    for (let i = 0; i < 5; i++) {
+      game.getNextPiece();
+    }
+    
+    game.pieceSequence.length.should.be.at.least(initialLength + 3);
+  });
 });

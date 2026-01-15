@@ -46,4 +46,46 @@ describe('Piece Logic', function(){
     shape.should.be.an('array');
     shape.length.should.equal(3);
   });
+
+  it('should move piece left and right', function(){
+    const p = new Piece('T', { x: 5, y: 0 });
+    p.move(1);
+    p.position.x.should.equal(6);
+    p.move(-2);
+    p.position.x.should.equal(4);
+  });
+
+  it('should move piece down', function(){
+    const p = new Piece('O', { x: 4, y: 5 });
+    p.moveDown();
+    p.position.y.should.equal(6);
+  });
+
+  it('should hard drop piece', function(){
+    const p = new Piece('L', { x: 4, y: 2 });
+    p.hardDrop(15);
+    p.position.y.should.equal(15);
+  });
+
+  it('should rotate back', function(){
+    const p = new Piece('Z');
+    p.rotation = 2;
+    p.rotateBack();
+    p.rotation.should.equal(1);
+    p.rotateBack();
+    p.rotation.should.equal(0);
+    p.rotateBack();
+    p.rotation.should.equal(3);
+  });
+
+  it('should handle all piece types rotations', function(){
+    const types = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+    types.forEach(type => {
+      const p = new Piece(type);
+      const shape = p.getCurrentShape();
+      shape.should.be.an('array');
+      p.rotate();
+      p.currentPiece !== undefined;
+    });
+  });
 });
