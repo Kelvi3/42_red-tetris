@@ -219,33 +219,79 @@ export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?
   );
 
   const addPenaltyLines = useCallback((n: number) => {
+    // Snapshot current board and player
+    const currBoard = board.map(row => [...row]);
+    const currPlayer = JSON.parse(JSON.stringify(player)) as IPlayer;
+
+    const width = currBoard[0].length;
+    const height = currBoard.length;
+
+    // Count existing penalty rows at bottom
+    let existingPenalty = 0;
+    for (let i = height - 1; i >= 0; i--) {
+      const row = currBoard[i];
+      if (row.every(cell => cell === '#808080')) existingPenalty++;
+      else break;
+    }
+
+    const firstNewPenaltyRow = Math.max(0, height - existingPenalty - n);
+
+    const tetHeight = currPlayer.tetromino.length;
+    const tetBottom = currPlayer.pos.y + tetHeight - 1;
+
+    // If penalties would overlap the falling piece, try to move it up.
+    if (tetBottom >= firstNewPenaltyRow) {
+      const overlap = tetBottom - firstNewPenaltyRow + 1;
+
+      // Try to move player up overlap times
+      for (let s = 0; s < overlap; s++) {
+        const candidate = JSON.parse(JSON.stringify(currPlayer)) as IPlayer;
+        candidate.pos.y = candidate.pos.y - 1;
+
+        if (candidate.pos.y < 0) {
+          // Can't move up: force lock and then apply remaining penalties
+          lockAndReset(player, board);
+          // Apply remaining penalties after lock (allow state to settle)
+          setTimeout(() => addPenaltyLines(n - s - 1), 0);
+          return;
+        }
+
+        if (!checkCollisionPure(candidate, currBoard, { x: 0, y: 0 })) {
+          // Safe to move up one step
+          setPlayer(candidate);
+          currPlayer.pos.y = candidate.pos.y;
+        } else {
+          // Collision when moved up: force lock
+          lockAndReset(player, board);
+          setTimeout(() => addPenaltyLines(n - s - 1), 0);
+          return;
+        }
+      }
+
+      // If we've moved the player up successfully, apply all penalty rows now
+      setBoard(prev => {
+        const newBoard = prev.map(row => [...row]);
+        for (let i = 0; i < n; i++) {
+          const rowIndex = height - 1 - existingPenalty - i;
+          if (rowIndex >= 0) newBoard[rowIndex] = new Array(width).fill('#808080');
+          else newBoard[0] = new Array(width).fill('#808080');
+        }
+        return newBoard;
+      });
+      return;
+    }
+
+    // No overlap -> apply penalty rows directly
     setBoard(prev => {
-       const newBoard = prev.map(row => [...row]);
-       const width = newBoard[0].length;
-       const height = newBoard.length;
-
-       // Count existing penalty rows at bottom
-       let existingPenalty = 0;
-       for (let i = height - 1; i >= 0; i--) {
-         const row = newBoard[i];
-         if (row.every(cell => cell === '#808080')) existingPenalty++;
-         else break;
-       }
-
-       // Add new penalty rows above existing penalty rows, stacking them
-       for (let i = 0; i < n; i++) {
-         const rowIndex = height - 1 - existingPenalty - i;
-         if (rowIndex >= 0) {
-           newBoard[rowIndex] = new Array(width).fill('#808080');
-         } else {
-           // no more space above: overwrite top row (will be handled as game over elsewhere)
-           newBoard[0] = new Array(width).fill('#808080');
-         }
-       }
-
-       return newBoard;
+      const newBoard = prev.map(row => [...row]);
+      for (let i = 0; i < n; i++) {
+        const rowIndex = height - 1 - existingPenalty - i;
+        if (rowIndex >= 0) newBoard[rowIndex] = new Array(width).fill('#808080');
+        else newBoard[0] = new Array(width).fill('#808080');
+      }
+      return newBoard;
     });
-  }, []);
+  }, [board, player, lockAndReset]);
 
   useInterval(() => {
     drop();
