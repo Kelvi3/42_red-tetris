@@ -46,7 +46,7 @@ const initEngine = (io) => {
 
       const game = games[roomName];
 
-      if (game.players.length >= 2) {
+      if (game.players.length >= 4) {
          socket.emit('roomError', 'Room is full');
          return;
       }
@@ -56,10 +56,9 @@ const initEngine = (io) => {
         return;
       }
 
-      if (!playerName && game.players.length === 0)
-        playerName = 'player1';
-      else if (!playerName)
-        playerName = 'player2';
+      if (!playerName) {
+        playerName = `player${game.players.length + 1}`;
+      }
 
       const player = new Player(playerName, socket.id);
       game.addPlayer(player);
@@ -176,24 +175,16 @@ const initEngine = (io) => {
 
     socket.on('linesCleared', ({ roomName, rowsCleared }) => {
       const game = games[roomName];
-      // console.log(`[server] linesCleared: room=${roomName} rows=${rowsCleared}`);
       if (game) {
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
-          // Changed rule per user feedback: "normalement c'est a chaque fois que on fait une ligne"
-          // Originally was n-1, but that results in 0 penalty for 1 line.
-          // Now calculating penalty = rowsCleared.
           const penalty = rowsCleared; 
-          // console.log(`[server] penalty calc: ${rowsCleared} = ${penalty}`);
           if (penalty > 0) {
-            console.log(`[server] emitting penaltyLines to room ${roomName} from ${player.name}: ${penalty} lines`);
             socket.to(roomName).emit('penaltyLines', {
               sender: player.name,
               senderId: socket.id,
               lines: penalty
             });
-          } else {
-            console.log(`[server] penalty <= 0 (${penalty}), not emitting.`);
           }
         }
       }
@@ -220,10 +211,17 @@ const initEngine = (io) => {
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
           player.isAlive = false;
-          game.removePlayer(player);
-          console.log(`[server] playerLost: socket=${socket.id} player=${playerName} room=${roomName}`);
-          socket.to(roomName).emit('youWin', { winnerName: playerName });
-          if (game.players.length === 0) delete games[roomName];
+          
+          io.to(roomName).emit('playerEliminated', { playerName });
+          
+          if (game.checkGameOver()) {
+            const alivePlayer = game.players.find(p => p.isAlive);
+            if (alivePlayer) {
+              io.to(roomName).emit('gameFinished', { winnerName: alivePlayer.name });
+              delete games[roomName];
+            }
+          }
+          
           if (typeof cb === 'function') cb({ ok: true });
         } else {
           if (typeof cb === 'function') cb({ ok: false, reason: 'player not found' });
@@ -238,7 +236,6 @@ const initEngine = (io) => {
       if (game) {
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
-            console.log(`[server] leaveRoom: socket=${socket.id} player=${player.name} room=${roomName}`);
             game.removePlayer(player);
             socket.leave(roomName);
             
@@ -250,7 +247,6 @@ const initEngine = (io) => {
 
             if (game.players.length === 1) {
               const remaining = game.players[0];
-              console.log(`[server] leaveRoom: notifying remaining socket=${remaining.socket} they are alone`);
               io.to(remaining.socket).emit('alone', { playerCount: 1 });
             }
             if (game.players.length === 0) delete games[roomName];
@@ -266,7 +262,7 @@ const initEngine = (io) => {
         const game = games[roomName];
         const player = game.players.find((p) => p.socket === socket.id);
         if (player) {
-          console.log(`[server] disconnect: socket=${socket.id} player=${player.name} room=${roomName} isStarted=${game.isStarted}`);
+          const wasHost = player.isHost;
           const otherPlayers = game.players.filter((p) => p.socket !== socket.id);
 
           if (game.isStarted) {
@@ -280,6 +276,11 @@ const initEngine = (io) => {
               if (game.players.length === 1) {
                 const remaining = game.players[0];
                 io.to(remaining.socket).emit('alone', { playerCount: 1 });
+              } else if (wasHost && game.players.length > 1) {
+                const newHost = game.host;
+                io.to(game.roomName).emit('updatePlayerList', 
+                  game.players.map(p => ({ name: p.name, isHost: p.isHost }))
+                );
               }
             }
             delete games[roomName];
@@ -292,7 +293,6 @@ const initEngine = (io) => {
 
             if (game.players.length === 1) {
               const remaining = game.players[0];
-              console.log(`[server] disconnect: notifying remaining socket=${remaining.socket} they are alone`);
               io.to(remaining.socket).emit('alone', { playerCount: 1 });
             }
             if (game.players.length === 0) delete games[roomName];

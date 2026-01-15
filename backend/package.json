@@ -9,8 +9,8 @@
     "client-dev": "webpack-dev-server --colors --hot --inline --host 0.0.0.0 --port 8080",
     "srv-dev": "DEBUG=tetris:* babel-watch -w src src/server/main.js",
     "srv-dist": "DEBUG=tetris:* babel src --out-dir dist",
-    "test": "mocha --require babel-core/register --reporter spec",
-    "coverage": "NODE_ENV=test nyc --include src --all -r text -r lcov -r text --require babel-core/register mocha "
+    "test": "mocha --require @babel/register --reporter spec",
+    "coverage": "NODE_ENV=test nyc --include src --all -r text -r lcov -r text --require @babel/register mocha "
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -28,6 +28,7 @@
     "@babel/eslint-parser": "^7.28.5",
     "@babel/preset-env": "^7.28.5",
     "@babel/preset-react": "^7.28.5",
+    "@babel/register": "^7.28.6",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "babel-loader": "^10.0.0",
