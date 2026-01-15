@@ -5,6 +5,89 @@ import { createBoard } from './gameHelper';
 import { IPlayer } from './types';
 import { useInterval } from './useInterval';
 
+// Start-Pure Functions
+export const checkCollisionPure = (player: IPlayer, board: any[][], move: { x: number; y: number }) => {
+  for (let y = 0; y < player.tetromino.length; y++) {
+    for (let x = 0; x < player.tetromino[y].length; x++) {
+      if (player.tetromino[y][x] !== 0) {
+        const newY = y + player.pos.y + move.y;
+        const newX = x + player.pos.x + move.x;
+
+        if (newY < 0 || newY >= board.length) return true;
+        if (newX < 0 || newX >= board[0].length) return true;
+        if (board[newY][newX] != 0 && board[newY][newX] != null) return true;
+      }
+    }
+  }
+  return false;
+};
+
+export const rotateMatrix = (matrix: number[][]): number[][] =>
+  matrix[0].map((_, i) => matrix.map((row) => row[i]).reverse());
+
+export const computeMove = (player: IPlayer, board: any[][], dir: number): IPlayer | null => {
+  const cloned = JSON.parse(JSON.stringify(player)) as IPlayer;
+  cloned.pos.x += dir;
+  if (!checkCollisionPure(cloned, board, { x: 0, y: 0 })) return cloned;
+  return null;
+};
+
+export const computeRotate = (player: IPlayer, board: any[][]): IPlayer | null => {
+  const clonedPlayer = JSON.parse(JSON.stringify(player)) as IPlayer;
+  clonedPlayer.tetromino = rotateMatrix(clonedPlayer.tetromino as number[][]);
+
+  const pos = clonedPlayer.pos.x;
+  let offset = 1;
+  while (checkCollisionPure(clonedPlayer, board, { x: 0, y: 0 })) {
+    clonedPlayer.pos.x += offset;
+    offset = -(offset + (offset > 0 ? 1 : -1));
+    if (offset > (clonedPlayer.tetromino[0] as any).length) {
+      // rotate back
+      clonedPlayer.tetromino = rotateMatrix(clonedPlayer.tetromino as number[][]);
+      clonedPlayer.pos.x = pos;
+      return null;
+    }
+  }
+
+  return clonedPlayer;
+};
+
+export const computeHardDrop = (player: IPlayer, board: any[][]): IPlayer => {
+  const virtualPlayer = JSON.parse(JSON.stringify(player)) as IPlayer;
+  while (!checkCollisionPure(virtualPlayer, board, { x: 0, y: 1 })) {
+    virtualPlayer.pos.y += 1;
+  }
+  return virtualPlayer;
+};
+
+export const addPenaltyLinesPure = (board: any[][], n: number) => {
+  const newBoard = board.map(row => [...row]);
+  const width = newBoard[0].length;
+  const height = newBoard.length;
+
+  // Count existing penalty rows at bottom
+  let existingPenalty = 0;
+  for (let i = height - 1; i >= 0; i--) {
+    const row = newBoard[i];
+    if (row.every(cell => cell === '#808080')) existingPenalty++;
+    else break;
+  }
+
+  // Add new penalty rows above existing penalty rows, stacking them
+  for (let i = 0; i < n; i++) {
+    const rowIndex = height - 1 - existingPenalty - i;
+    if (rowIndex >= 0) {
+      newBoard[rowIndex] = new Array(width).fill('#808080');
+    } else {
+      newBoard[0] = new Array(width).fill('#808080');
+    }
+  }
+
+  return newBoard;
+};
+// End-Pure Functions
+
+
 export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?: (n: number) => void) => {
   const [board, setBoard] = useState<any[][]>(createBoard());
   const [player, setPlayer] = useState<IPlayer>({
@@ -19,27 +102,7 @@ export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?
   const pieceSequence = initialPieceSequence ?? [];
   const [currentPieceIndex, setCurrentPieceIndex] = useState(0);
 
-  const checkCollision = useCallback(
-    (player: IPlayer, board: any[][], move: { x: number; y: number }) => {
-      for (let y = 0; y < player.tetromino.length; y++) {
-        for (let x = 0; x < player.tetromino[y].length; x++) {
-          if (player.tetromino[y][x] !== 0) {
-            const newY = y + player.pos.y + move.y;
-            const newX = x + player.pos.x + move.x;
-
-            if (newY < 0 || newY >= board.length) return true;
-
-            if (newX < 0 || newX >= board[0].length) return true;
-
-            if (board[newY][newX] != 0 && board[newY][newX] != null)
-              return true;
-          }
-        }
-      }
-      return false;
-    },
-    []
-  );
+  // The hook will use the pure helpers defined below via wrappers.
 
   const resetPlayer = useCallback((boardToCheck: any[][]) => {
     const newTet = (() => {
@@ -75,23 +138,10 @@ export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?
 
   const playerRotate = useCallback(
     (board: any[][], dir: number) => {
-      const clonedPlayer = JSON.parse(JSON.stringify(player));
-      clonedPlayer.tetromino = rotate(clonedPlayer.tetromino);
-
-      const pos = clonedPlayer.pos.x;
-      let offset = 1;
-      while (checkCollision(clonedPlayer, board, { x: 0, y: 0 })) {
-        clonedPlayer.pos.x += offset;
-        offset = -(offset + (offset > 0 ? 1 : -1));
-        if (offset > clonedPlayer.tetromino[0].length) {
-          rotate(clonedPlayer.tetromino);
-          clonedPlayer.pos.x = pos;
-          return;
-        }
-      }
-      setPlayer(clonedPlayer);
+      const rotated = computeRotate(player, board);
+      if (rotated) setPlayer(rotated);
     },
-    [player, checkCollision]
+    [player]
   );
 
   const sweepRows = (newBoard: any[][]) => {
@@ -142,7 +192,7 @@ export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?
   }, [lockPlayerToBoard, resetPlayer, setBoard, setDropTime]);
 
   const drop = useCallback(() => {
-    if (!checkCollision(player, board, { x: 0, y: 1 })) {
+    if (!checkCollisionPure(player, board, { x: 0, y: 1 })) {
       setPlayer((prev) => ({
         ...prev,
         pos: { x: prev.pos.x, y: prev.pos.y + 1 },
@@ -156,30 +206,20 @@ export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?
       }
       lockAndReset(player, board);
     }
-  }, [player, board, checkCollision, lockAndReset, setGameOver, setDropTime]);
+  }, [player, board, lockAndReset, setGameOver, setDropTime]);
 
 
   const hardDrop = useCallback(() => {
-    let virtualPlayer = JSON.parse(JSON.stringify(player));
-
-    while (!checkCollision(virtualPlayer, board, { x: 0, y: 1 })) {
-      virtualPlayer.pos.y += 1;
-    }
-
+    const virtualPlayer = computeHardDrop(player, board);
     lockAndReset(virtualPlayer, board);
-    
-  }, [player, board, checkCollision, lockAndReset]);
+  }, [player, board, lockAndReset]);
 
   const movePlayer = useCallback(
     (dir: number) => {
-      if (!checkCollision(player, board, { x: dir, y: 0 })) {
-        setPlayer((prev) => ({
-          ...prev,
-          pos: { x: prev.pos.x + dir, y: prev.pos.y },
-        }));
-      }
+      const moved = computeMove(player, board, dir);
+      if (moved) setPlayer(moved);
     },
-    [player, board, checkCollision]
+    [player, board]
   );
 
   const addPenaltyLines = useCallback((n: number) => {
@@ -234,6 +274,10 @@ export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?
     playerRotate,
     setDropTime,
     startGame,
-    addPenaltyLines
+    addPenaltyLines,
+    // Allow external components to apply pure-computed player changes
+    applyPlayer: (newPlayer: IPlayer) => setPlayer(newPlayer),
+    // Allow external components to lock a player and trigger board reset
+    applyLockAndReset: (playerToLock: IPlayer) => lockAndReset(playerToLock, board)
   };
 };

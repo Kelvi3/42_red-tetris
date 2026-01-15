@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { useTetris } from './useTetris';
+import { useTetris, computeMove, computeRotate, computeHardDrop } from './useTetris';
 import { COLORS } from './constants';
 import './Board.css';
 import './OpponentBoard.css';
@@ -79,7 +79,9 @@ function Board() {
     playerRotate,
     setDropTime,
     startGame,
-    addPenaltyLines
+    addPenaltyLines,
+    applyPlayer,
+    applyLockAndReset
   } = useTetris(pieceSequence, onRowsCleared);
 
   // Listen for penalty lines
@@ -254,17 +256,26 @@ function Board() {
     switch (key) {
       case "ArrowLeft":
         e.preventDefault();
-        movePlayer(-1);
+        {
+          const moved = computeMove(player, board, -1);
+          if (moved && applyPlayer) applyPlayer(moved);
+        }
         break;
 
       case "ArrowRight":
         e.preventDefault();
-        movePlayer(1);
+        {
+          const moved = computeMove(player, board, 1);
+          if (moved && applyPlayer) applyPlayer(moved);
+        }
         break;
 
       case "ArrowUp":
         e.preventDefault();
-        playerRotate(board, 1);
+        {
+          const rotated = computeRotate(player, board);
+          if (rotated && applyPlayer) applyPlayer(rotated);
+        }
         break;
 
       case "ArrowDown":
@@ -275,7 +286,10 @@ function Board() {
 
       case " ":
         e.preventDefault();
-        hardDrop();
+        {
+          const landed = computeHardDrop(player, board);
+          if (landed && applyLockAndReset) applyLockAndReset(landed);
+        }
         break;
     }
   };
