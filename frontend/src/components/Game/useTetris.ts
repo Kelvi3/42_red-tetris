@@ -158,10 +158,8 @@ export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?
       return acc;
     }, []);
 
-    if (rowsCleared > 0 && onRowsCleared) {
-      console.log(`[useTetris] sweepRows: cleared ${rowsCleared} lines`);
+    if (rowsCleared > 0 && onRowsCleared)
       onRowsCleared(rowsCleared);
-    }
 
     return cleaned;
   };
@@ -173,8 +171,6 @@ export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?
       row.forEach((value, x) => {
         if (value !== 0) {
           newBoard[player.pos.y + y][player.pos.x + x] = player.color;
-        } else {
-          // console.log([player.pos.y + y][player.pos.x + x]);
         }
       });
     });
@@ -223,7 +219,6 @@ export const useTetris = (initialPieceSequence?: string[] | null, onRowsCleared?
   );
 
   const addPenaltyLines = useCallback((n: number) => {
-    console.log(`[useTetris] addPenaltyLines: adding ${n} lines`);
     setBoard(prev => {
        const newBoard = prev.map(row => [...row]);
        const width = newBoard[0].length;

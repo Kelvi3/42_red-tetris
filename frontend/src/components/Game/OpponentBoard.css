@@ -1,21 +1,22 @@
-/* Opponent Board Styles */
 .opponents-sidebar {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 20px;
   min-width: 200px;
-  padding: 15px; /* 15px on all sides */
-  border-right: 10px solid #333; /* Even thicker separator line */
+  padding: 15px;
+  border-right: 10px solid #333;
   margin: 0;
-  align-self: stretch; /* Take full height of the parent (game-container) */
+  align-self: stretch;
   box-sizing: border-box;
+  overflow-y: auto;
+  max-height: 100vh;
 }
 
 .opponent-card {
-  background: transparent; /* No background */
+  background: transparent;
   padding: 10px;
-  border: 4px solid #fff2; /* Thick border */
-  border-radius: 0; /* No radius */
+  border: 4px solid #fff2;
+  border-radius: 0;
   text-align: center;
 }
 
@@ -27,21 +28,43 @@
   font-weight: bold;
 }
 
+@media (max-width: 1400px) {
+  .opponents-sidebar {
+    grid-template-columns: repeat(2, 1fr);
+    min-width: 100%;
+    border-right: none;
+    border-top: 10px solid #333;
+    border-bottom: 10px solid #333;
+    max-height: auto;
+  }
+}
+
 @media (max-width: 768px) {
   .opponents-sidebar {
-    flex-direction: row;
+    grid-template-columns: repeat(3, 1fr);
     flex-wrap: wrap;
     justify-content: center;
     width: 100%;
-    
     border-right: none;
     padding: 15px;
     margin-right: 0;
     border-top: 10px solid #333;
+    border-bottom: 10px solid #333;
     align-self: auto;
+    max-height: auto;
   }
 
   .opponent-card {
-    transform: scale(0.8);
+    transform: scale(0.9);
+  }
+}
+
+@media (max-width: 480px) {
+  .opponents-sidebar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .opponent-card {
+    transform: scale(0.7);
   }
 }
