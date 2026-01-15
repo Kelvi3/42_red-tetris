@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">10% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>1/10</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/21</span>
+                <span class='fraction'>21/21</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">10% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>1/10</span>
+                <span class='fraction'>10/10</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -131,27 +131,27 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">62x</span>
+<span class="cline-any cline-yes">1120x</span>
+<span class="cline-any cline-yes">11200x</span>
+<span class="cline-any cline-yes">11200x</span>
+<span class="cline-any cline-yes">10200x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">11200x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">62x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1120x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">11200x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -184,28 +184,28 @@ interface BoardDisplayProps {
   cellSize?: number;
 }
 &nbsp;
-const BoardDisplay: React.FC&lt;BoardDisplayProps&gt; = <span class="fstat-no" title="function not covered" >({</span> board, player, style, className, cellSize }) =&gt; {
-  const boardState = <span class="cstat-no" title="statement not covered" >board.map(<span class="fstat-no" title="function not covered" >(r</span>ow, y) =&gt;</span>
-<span class="cstat-no" title="statement not covered" >    row.map(<span class="fstat-no" title="function not covered" >(c</span>ell, x) =&gt; {</span>
-      let isPlayerCell = <span class="cstat-no" title="statement not covered" >false;</span>
-<span class="cstat-no" title="statement not covered" >      if (player &amp;&amp; player.tetromino) {</span>
-<span class="cstat-no" title="statement not covered" >         isPlayerCell =</span>
+const BoardDisplay: React.FC&lt;BoardDisplayProps&gt; = ({ board, player, style, className, cellSize }) =&gt; {
+  const boardState = board.map((row, y) =&gt;
+    row.map((cell, x) =&gt; {
+      let isPlayerCell = false;
+      if (player &amp;&amp; player.tetromino) {
+         isPlayerCell =
           y &gt;= player.pos.y &amp;&amp;
           y &lt; player.pos.y + player.tetromino.length &amp;&amp;
           x &gt;= player.pos.x &amp;&amp;
           x &lt; player.pos.x + player.tetromino[0].length &amp;&amp;
           player.tetromino[y - player.pos.y][x - player.pos.x] !== 0;
       }
-<span class="cstat-no" title="statement not covered" >      return isPlayerCell ? player!.color : cell;</span>
+      return isPlayerCell ? player!.color : cell;
     })
   );
 &nbsp;
-<span class="cstat-no" title="statement not covered" >  return (</span>
+  return (
     &lt;div className={`board ${className || ''}`} style={style}&gt;
-      {boardState.map(<span class="fstat-no" title="function not covered" >(r</span>ow, rowIndex) =&gt; (
-<span class="cstat-no" title="statement not covered" >        &lt;div key={rowIndex} className="row"&gt;</span>
-          {row.map(<span class="fstat-no" title="function not covered" >(c</span>ellColor, colIndex) =&gt; (
-<span class="cstat-no" title="statement not covered" >            &lt;div</span>
+      {boardState.map((row, rowIndex) =&gt; (
+        &lt;div key={rowIndex} className="row"&gt;
+          {row.map((cellColor, colIndex) =&gt; (
+            &lt;div
               key={colIndex}
               className="cell"
               style={{
@@ -232,7 +232,7 @@ export default BoardDisplay;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-01-15T12:45:08.447Z
+                at 2026-01-15T13:08:21.174Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

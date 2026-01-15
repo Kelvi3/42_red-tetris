@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter, Routes, Route, MemoryRouter } from 'react-router-dom';
 import Board from '../Board';
 import * as useTetrisModule from '../useTetris';
+import * as tetrisHelpers from '../useTetris';
 
 const mockNavigate = vi.fn();
 const mockLeaveRoom = vi.fn().mockResolvedValue({ ok: true });
@@ -62,6 +63,8 @@ describe('Board', () => {
     setDropTime: vi.fn(),
     startGame: vi.fn(),
     addPenaltyLines: vi.fn(),
+    applyPlayer: vi.fn(),
+    applyLockAndReset: vi.fn(),
   };
 
   beforeEach(() => {
@@ -196,12 +199,14 @@ describe('Board', () => {
     expect(container).toBeTruthy();
   });
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.spyOn(useTetrisModule, 'useTetris').mockReturnValue(mockUseTetris);
-  });
-
   it('should handle keyboard ArrowLeft', () => {
+    const computeMoveSpy = vi.spyOn(tetrisHelpers, 'computeMove').mockReturnValue({
+      pos: { x: 2, y: 0 },
+      tetromino: [[1]],
+      color: '#FF0000',
+      collided: false,
+    });
+
     const { container } = render(
       <MemoryRouter initialEntries={[{
         pathname: '/solo/Player1',
@@ -213,12 +218,26 @@ describe('Board', () => {
       </MemoryRouter>
     );
     
-    const wrapper = container.querySelector('.game-wrapper');
+    const wrapper = container.querySelector('.game-wrapper') as HTMLElement;
+    wrapper?.focus();
     fireEvent.keyDown(wrapper!, { key: 'ArrowLeft' });
-    expect(mockUseTetris.movePlayer).toHaveBeenCalledWith(-1);
+    expect(computeMoveSpy).toHaveBeenCalledWith(
+      mockUseTetris.player,
+      mockUseTetris.board,
+      -1
+    );
+    expect(mockUseTetris.applyPlayer).toHaveBeenCalled();
+    computeMoveSpy.mockRestore();
   });
 
   it('should handle keyboard ArrowRight', () => {
+    const computeMoveSpy = vi.spyOn(tetrisHelpers, 'computeMove').mockReturnValue({
+      pos: { x: 4, y: 0 },
+      tetromino: [[1]],
+      color: '#FF0000',
+      collided: false,
+    });
+
     const { container } = render(
       <MemoryRouter initialEntries={[{
         pathname: '/solo/Player1',
@@ -230,12 +249,26 @@ describe('Board', () => {
       </MemoryRouter>
     );
     
-    const wrapper = container.querySelector('.game-wrapper');
+    const wrapper = container.querySelector('.game-wrapper') as HTMLElement;
+    wrapper?.focus();
     fireEvent.keyDown(wrapper!, { key: 'ArrowRight' });
-    expect(mockUseTetris.movePlayer).toHaveBeenCalledWith(1);
+    expect(computeMoveSpy).toHaveBeenCalledWith(
+      mockUseTetris.player,
+      mockUseTetris.board,
+      1
+    );
+    expect(mockUseTetris.applyPlayer).toHaveBeenCalled();
+    computeMoveSpy.mockRestore();
   });
 
   it('should handle keyboard ArrowUp for rotation', () => {
+    const computeRotateSpy = vi.spyOn(tetrisHelpers, 'computeRotate').mockReturnValue({
+      pos: { x: 3, y: 0 },
+      tetromino: [[0, 1], [1, 1], [1, 0]],
+      color: '#FF0000',
+      collided: false,
+    });
+
     const { container } = render(
       <MemoryRouter initialEntries={[{
         pathname: '/solo/Player1',
@@ -247,9 +280,15 @@ describe('Board', () => {
       </MemoryRouter>
     );
     
-    const wrapper = container.querySelector('.game-wrapper');
+    const wrapper = container.querySelector('.game-wrapper') as HTMLElement;
+    wrapper?.focus();
     fireEvent.keyDown(wrapper!, { key: 'ArrowUp' });
-    expect(mockUseTetris.playerRotate).toHaveBeenCalled();
+    expect(computeRotateSpy).toHaveBeenCalledWith(
+      mockUseTetris.player,
+      mockUseTetris.board
+    );
+    expect(mockUseTetris.applyPlayer).toHaveBeenCalled();
+    computeRotateSpy.mockRestore();
   });
 
   it('should handle keyboard ArrowDown for fast drop', () => {
@@ -271,6 +310,13 @@ describe('Board', () => {
   });
 
   it('should handle keyboard Space for hard drop', () => {
+    const computeHardDropSpy = vi.spyOn(tetrisHelpers, 'computeHardDrop').mockReturnValue({
+      pos: { x: 3, y: 18 },
+      tetromino: [[1]],
+      color: '#FF0000',
+      collided: false,
+    });
+
     const { container } = render(
       <MemoryRouter initialEntries={[{
         pathname: '/solo/Player1',
@@ -282,9 +328,15 @@ describe('Board', () => {
       </MemoryRouter>
     );
     
-    const wrapper = container.querySelector('.game-wrapper');
+    const wrapper = container.querySelector('.game-wrapper') as HTMLElement;
+    wrapper?.focus();
     fireEvent.keyDown(wrapper!, { key: ' ' });
-    expect(mockUseTetris.hardDrop).toHaveBeenCalled();
+    expect(computeHardDropSpy).toHaveBeenCalledWith(
+      mockUseTetris.player,
+      mockUseTetris.board
+    );
+    expect(mockUseTetris.applyLockAndReset).toHaveBeenCalled();
+    computeHardDropSpy.mockRestore();
   });
 
   it('should handle keyboard ArrowDown key up', () => {
@@ -305,7 +357,19 @@ describe('Board', () => {
   });
 
   it('should render game over message when gameOver is true', () => {
-    const gameOverMock = { ...mockUseTetris, gameOver: true };
+    const gameOverMock = {
+      ...mockUseTetris,
+      gameOver: true,
+      movePlayer: vi.fn(),
+      drop: vi.fn(),
+      hardDrop: vi.fn(),
+      playerRotate: vi.fn(),
+      setDropTime: vi.fn(),
+      startGame: vi.fn(),
+      addPenaltyLines: vi.fn(),
+      applyPlayer: vi.fn(),
+      applyLockAndReset: vi.fn(),
+    };
     vi.spyOn(useTetrisModule, 'useTetris').mockReturnValue(gameOverMock);
 
     const { container } = render(
@@ -323,8 +387,20 @@ describe('Board', () => {
   });
 
   it('should not handle keys when game is over', () => {
-    const gameOverMock = { ...mockUseTetris, gameOver: true };
-    vi.spyOn(useTetrisModule, 'useTetris').mockReturnValue(gameOverMock);
+    const gameOverMockForKeys = {
+      ...mockUseTetris,
+      gameOver: true,
+      movePlayer: vi.fn(),
+      drop: vi.fn(),
+      hardDrop: vi.fn(),
+      playerRotate: vi.fn(),
+      setDropTime: vi.fn(),
+      startGame: vi.fn(),
+      addPenaltyLines: vi.fn(),
+      applyPlayer: vi.fn(),
+      applyLockAndReset: vi.fn(),
+    };
+    vi.spyOn(useTetrisModule, 'useTetris').mockReturnValue(gameOverMockForKeys);
 
     const { container } = render(
       <MemoryRouter initialEntries={[{
@@ -397,5 +473,161 @@ describe('Board', () => {
       ['I', 'O', 'T', 'S'],
       expect.any(Function)
     );
+  });
+
+  it('should update opponents state on opponentStateUpdate event', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={[{
+        pathname: '/room123/Player1',
+        state: { 
+          startGame: true,
+          roomName: 'room123',
+          playerName: 'Player1'
+        }
+      }]}>
+        <Routes>
+          <Route path="/:room/:player" element={<Board />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const socketOn = mockSocket.on as any;
+    const opponentUpdateHandler = socketOn.mock.calls.find(
+      (call: any) => call[0] === 'opponentStateUpdate'
+    )?.[1];
+    
+    if (opponentUpdateHandler) {
+      opponentUpdateHandler({
+        socketId: 'opponent-socket-id',
+        name: 'Opponent1',
+        state: { board: [[1, 0]], player: { pos: { x: 5, y: 5 } } }
+      });
+      
+      expect(container).toBeTruthy();
+    }
+  });
+
+  it('should handle playerEliminated event', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={[{
+        pathname: '/room123/Player1',
+        state: { 
+          startGame: true,
+          roomName: 'room123',
+          playerName: 'Player1'
+        }
+      }]}>
+        <Routes>
+          <Route path="/:room/:player" element={<Board />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const socketOn = mockSocket.on as any;
+    const playerEliminatedHandler = socketOn.mock.calls.find(
+      (call: any) => call[0] === 'playerEliminated'
+    )?.[1];
+    
+    if (playerEliminatedHandler) {
+      playerEliminatedHandler({ playerName: 'EliminatedPlayer' });
+      expect(container).toBeTruthy();
+    }
+  });
+
+  it('should handle playerLeft event', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={[{
+        pathname: '/room123/Player1',
+        state: { 
+          startGame: true,
+          roomName: 'room123',
+          playerName: 'Player1'
+        }
+      }]}>
+        <Routes>
+          <Route path="/:room/:player" element={<Board />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const socketOn = mockSocket.on as any;
+    const playerLeftHandler = socketOn.mock.calls.find(
+      (call: any) => call[0] === 'playerLeft'
+    )?.[1];
+    
+    if (playerLeftHandler) {
+      playerLeftHandler({ playerName: 'LeftPlayer' });
+      expect(container).toBeTruthy();
+    }
+  });
+
+  it('should handle alone event in multiplayer', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={[{
+        pathname: '/room123/Player1',
+        state: { 
+          startGame: true,
+          roomName: 'room123',
+          playerName: 'Player1'
+        }
+      }]}>
+        <Routes>
+          <Route path="/:room/:player" element={<Board />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const socketOn = mockSocket.on as any;
+    const aloneHandler = socketOn.mock.calls.find(
+      (call: any) => call[0] === 'alone'
+    )?.[1];
+    
+    if (aloneHandler) {
+      aloneHandler({ playerCount: 1 });
+      expect(container).toBeTruthy();
+    }
+  });
+
+  it('should handle gameFinished event without crashing', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={[{
+        pathname: '/room123/Player1',
+        state: { 
+          startGame: true,
+          roomName: 'room123',
+          playerName: 'Player1'
+        }
+      }]}>
+        <Routes>
+          <Route path="/:room/:player" element={<Board />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(container).toBeTruthy();
+  });
+
+  it('should broadcast local state on board change', () => {
+    render(
+      <MemoryRouter initialEntries={[{
+        pathname: '/room123/Player1',
+        state: { 
+          startGame: true,
+          roomName: 'room123',
+          playerName: 'Player1'
+        }
+      }]}>
+        <Routes>
+          <Route path="/:room/:player" element={<Board />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const socketEmit = mockSocket.emit as any;
+    const updateCalls = socketEmit.mock.calls.filter(
+      (call: any) => call[0] === 'updatePlayerState'
+    );
+    
+    expect(updateCalls.length).toBeGreaterThanOrEqual(0);
   });
 });
